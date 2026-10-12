@@ -173,8 +173,9 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
 .bat__body { fill: var(--color-text); }
 .bat__star { fill: var(--color-blood); transform-box: view-box; transform-origin: 798px 447px; }
 .hero__lamp {
-  position: absolute; left: -1500px; top: -1500px; width: 3000px; height: 3000px; z-index: 1; pointer-events: none;
-  background: radial-gradient(circle at center, rgb(14 12 11 / 0) 0, rgb(14 12 11 / 0) 7%, rgb(14 12 11 / 0.5) 17%, rgb(14 12 11 / 0.66) 32%);
+  /* Вдвое шире и выше шапки, центр пятна в левом верхнем углу: куда бы ни ушёл курсор, тень закрывает всю шапку */
+  position: absolute; left: -100%; top: -100%; width: 200%; height: 200%; z-index: 1; pointer-events: none;
+  background: radial-gradient(circle at center, rgb(14 12 11 / 0) 0, rgb(14 12 11 / 0) 150px, rgb(14 12 11 / 0.5) 360px, rgb(14 12 11 / 0.66) 680px);
   opacity: 0; display: none;
 }
 .hero__lamp.is-live { display: block; }
