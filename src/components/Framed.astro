@@ -1,14 +1,14 @@
 ---
 // Эскиз на светлой бумаге в резной раме, как картина на тёмной стене
-import { frames, woodFrames, singleFrames, frameLook, type FrameName } from "../data/frames";
+import { frames, woodFrames, singleFrames, ebonyLand, frameLook, type FrameName } from "../data/frames";
 import { url } from "../lib/url";
 import Bat from "./Bat.astro";
-interface Props { frame: FrameName; img?: string; bat?: boolean; alt: string; taken?: boolean }
-const { frame, img, bat, alt, taken = false } = Astro.props;
+interface Props { frame?: FrameName; land?: boolean; img?: string; bat?: boolean; alt: string; taken?: boolean }
+const { frame = "rococo", land = false, img, bat, alt, taken = false } = Astro.props;
 const wood = frameLook === "wood";
 const sheet = frameLook === "sheet";
 const single = frameLook in singleFrames ? singleFrames[frameLook as keyof typeof singleFrames] : null;
-const f = single ? single[frame] : wood ? woodFrames[frame] : frames[frame];
+const f = land && frameLook === "ebony" ? ebonyLand : single ? single[frame] : wood ? woodFrames[frame] : frames[frame];
 const [t, r, b, l] = f.opening;
 const src = sheet ? f.src.replace("-800", "-sheet-800") : f.src;
 const round = wood && woodFrames[frame].round;

@@ -7,7 +7,7 @@ import { url } from "../lib/url";
 
 export function getStaticPaths() {
   const pages = [
-    ...nav.map((n) => ({ section: n.href.replaceAll("/", ""), title: n.label })),
+    ...nav.filter((n) => n.href !== "/eskizy/").map((n) => ({ section: n.href.replaceAll("/", ""), title: n.label })),
     { section: "zapis", title: "Запись на консультацию" },
     { section: "privacy", title: "Политика конфиденциальности" },
   ];

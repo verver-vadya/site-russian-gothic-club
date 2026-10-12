@@ -23,6 +23,8 @@ export const singleFrames = {
   black: single("frame-gilt-black-800.webp", 923, giltOpening),
   ebony: single("frame-ebony-800.webp", 977, [20, 25, 21.3, 24.5]),
 };
+// Та же рама из чёрного дерева, повёрнутая для горизонтальных эскизов
+export const ebonyLand = { src: "frame-ebony-land-800.webp", width: 800, height: 655, opening: [25, 21.3, 24.5, 20] };
 
 // Как выглядят рамы: "line" — белая линия прямо на тёмной стене, "sheet" — старый лист с рамой тёмными чернилами,
 // "wood" — три разные деревянные рамы, "gilt" / "black" / "ebony" — одна прямоугольная рама на все эскизы

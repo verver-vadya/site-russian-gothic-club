@@ -256,7 +256,7 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
 .framed--sheet .framed__paper { margin: 2.5%; background: #efe7d8; box-shadow: 0 1px 0 rgb(0 0 0 / 0.25), 0 0.4rem 1rem rgb(40 25 10 / 0.35), inset 0 0 1.5rem rgb(70 50 30 / 0.25); }
 .framed--sheet { isolation: isolate; }
 /* Вариант «дерево»: настоящая рама поверх бумаги, у овальной рамы и бумага овальная */
-.framed--wood .framed__paper { padding: 6%; }
+.framed--wood .framed__paper { padding: 3%; }
 .framed__paper--round { border-radius: 50%; padding: 0; }
 .framed__paper--round img { object-fit: cover; }
 .sketch .framed { transition: transform var(--duration-soft) var(--ease-soft); }
@@ -310,3 +310,20 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
 /* ---------- Внутренние страницы (пока заглушки) ---------- */
 .page-head { padding-block: var(--space-xl) var(--space-l); }
 .page-head p { max-width: 52ch; margin-top: var(--space-m); color: var(--color-muted); }
+
+/* Страница «Эскизы»: фильтр по стилю и подписи под карточками */
+.filter { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-bottom: var(--space-l); }
+.filter button {
+  font: inherit; font-size: var(--step--1); color: var(--color-text); background: transparent; cursor: pointer;
+  border: 1px solid var(--color-line-strong); border-radius: 999px; padding: 0.45rem 1rem; min-height: 2.75rem;
+  transition: background-color var(--duration) ease, color var(--duration) ease, border-color var(--duration) ease, transform 120ms ease;
+}
+@media (hover: hover) { .filter button:hover { border-color: var(--color-text); } }
+.filter button:active { transform: scale(0.97); }
+.filter button[aria-pressed="true"] { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
+.is-hidden { display: none !important; }
+.sketch-list--all .sketch { text-align: center; }
+.sketch-list--all .sketch__meta a { color: inherit; }
+.sketch__cta { margin-top: var(--space-xs); }
+.sketch-note { max-width: 42rem; margin-top: var(--space-xl); font-size: var(--step--1); }
+.section--flush { padding-top: 0; }
