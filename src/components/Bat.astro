@@ -1,6 +1,6 @@
 ---
 // Летучая мышь с красной звездой (см. src/data/bat.ts).
-// flap: адрес кадров взмаха (assets/data/bat-flap.json). Тогда в рисунке есть два пустых контура для кадров (текущий и следующий, он проступает поверх), их наполняет main.js.
+// flap: адрес кадров взмаха (assets/data/bat-flap.json). Тогда в рисунке есть пустой контур для кадров, его наполняет main.js.
 import { bat } from "../data/bat";
 interface Props { class?: string; flap?: string }
 const { class: cls, flap } = Astro.props;
@@ -8,6 +8,5 @@ const { class: cls, flap } = Astro.props;
 <svg class:list={["bat", cls]} viewBox={bat.viewBox} aria-hidden="true" data-flap={flap}>
   <path class="bat__body" fill-rule="evenodd" d={bat.body} />
   {flap && <path class="bat__flap" fill-rule="evenodd" d="" />}
-  {flap && <path class="bat__flap bat__flap--next" fill-rule="evenodd" d="" />}
   <path class="bat__star" fill-rule="evenodd" d={bat.star} />
 </svg>

@@ -163,7 +163,8 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
 /* ---------- Первый экран ---------- */
 .hero { position: relative; overflow: hidden; isolation: isolate; }
 .hero__art { position: relative; height: min(76svh, 132vw); }
-.hero__cathedral { position: absolute; inset: var(--header-h) 0 0; }
+/* Собор заходит за края на 16 px: при сдвиге за курсором не открывается его край */
+.hero__cathedral { position: absolute; inset: var(--header-h) -16px 0; }
 .hero__cathedral img {
   width: 100%; height: 100%; object-fit: cover; object-position: 50% 0;
   -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 98%);
@@ -181,10 +182,14 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
 }
 .hero__lamp.is-live { display: block; }
 /* Туман у подножия собора: две полосы плывут в разные стороны, фонарь подсвечивает их вокруг курсора */
-.hero__fog { position: absolute; inset: auto 0 0; height: 62%; overflow: hidden; pointer-events: none; opacity: 0.5; }
+/* Слой шире шапки, чтобы при сдвиге за курсором не открывались его боковые края */
+.hero__fog { position: absolute; inset: auto -48px 0; height: 62%; overflow: hidden; pointer-events: none; opacity: 0.5; }
+/* Каждая полоса сверху растворяется сама: у текстуры облака упираются в верхний край и без этого выглядят обрезанными */
 .hero__fog::before, .hero__fog::after {
   content: ""; position: absolute; left: 0; bottom: 0; height: 100%; aspect-ratio: 5120 / 480;
   background: var(--fog) repeat-x 0 0 / 25% 100%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.35) 30%, #000 65%);
+  mask-image: linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.35) 30%, #000 65%);
   animation: fog-drift 140s linear infinite;
 }
 .hero__fog::after { height: 70%; opacity: 0.7; transform: scaleX(-1); animation-duration: 95s; animation-direction: reverse; }
@@ -215,7 +220,7 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
 @media (min-width: 62rem) {
   .hero { min-height: clamp(40rem, 100svh, 68rem); display: grid; align-items: center; }
   .hero__art { position: absolute; inset: 0; height: auto; }
-  .hero__cathedral { inset: calc(var(--header-h) + var(--space-s)) 0 0 auto; width: min(58%, 62rem); }
+  .hero__cathedral { inset: calc(var(--header-h) + var(--space-s)) -16px 0 auto; width: min(58%, 62rem); }
   .hero__cathedral img {
     object-fit: cover; object-position: 50% 0;
     -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 62%, transparent 99%), linear-gradient(to right, transparent 0, #000 22%);
@@ -410,6 +415,8 @@ img.framed__stencil { filter: url(#stencil); }
 [data-intro].intro-done { overflow: visible; }
 .intro.is-gone { opacity: 0; transition: opacity 500ms var(--ease-soft); pointer-events: none; }
 .intro__dark, .intro__sky { position: absolute; inset: 0; }
+/* Холст рисуется с плотностью экрана (на телефоне в 2–3 раза больше точек), а на экране занимает ровно окно */
+.intro__sky { width: 100%; height: 100%; }
 .intro__flame { display: none; }
 
 /* «Свеча»: в темноте вспыхивает огонёк, круг тёплого света растёт и открывает сайт */
