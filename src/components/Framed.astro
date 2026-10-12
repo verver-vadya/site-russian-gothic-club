@@ -1,17 +1,19 @@
 ---
 // Эскиз на светлой бумаге в резной раме, как картина на тёмной стене
-import { frames, frameLook, type FrameName } from "../data/frames";
+import { frames, woodFrames, frameLook, type FrameName } from "../data/frames";
 import { url } from "../lib/url";
 import Bat from "./Bat.astro";
 interface Props { frame: FrameName; img?: string; bat?: boolean; alt: string; taken?: boolean }
 const { frame, img, bat, alt, taken = false } = Astro.props;
-const f = frames[frame];
-const [t, r, b, l] = f.opening;
+const wood = frameLook === "wood";
 const sheet = frameLook === "sheet";
+const f = wood ? woodFrames[frame] : frames[frame];
+const [t, r, b, l] = f.opening;
 const src = sheet ? f.src.replace("-800", "-sheet-800") : f.src;
+const round = wood && woodFrames[frame].round;
 ---
-<div class:list={["framed", { "framed--sheet": sheet }]} style={`--ratio: ${f.width} / ${f.height}`}>
-  <div class="framed__paper" style={`inset: ${t}% ${r}% ${b}% ${l}%`}>
+<div class:list={["framed", { "framed--sheet": sheet, "framed--wood": wood }]} style={`--ratio: ${f.width} / ${f.height}`}>
+  <div class:list={["framed__paper", { "framed__paper--round": round }]} style={`inset: ${t}% ${r}% ${b}% ${l}%`}>
     {bat ? <Bat class="framed__bat" /> : <img src={url(`/assets/img/${img}`)} width="800" height="1000" alt={alt} loading="lazy" decoding="async">}
   </div>
   <img class="framed__frame" src={url(`/assets/img/${src}`)} width={f.width} height={f.height} alt="" loading="lazy" decoding="async">
