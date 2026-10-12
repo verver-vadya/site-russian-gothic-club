@@ -169,7 +169,8 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
   -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 98%);
   mask-image: linear-gradient(to bottom, #000 55%, transparent 98%);
 }
-.hero__bat { position: absolute; left: 2%; top: calc(var(--header-h) + 3%); width: 40%; }
+/* Отступ от края: в размахе крылья на 18 % ширины рисунка шире влево и на 26 % вправо */
+.hero__bat { position: absolute; left: 7.5%; top: calc(var(--header-h) + 3%); width: 40%; }
 .bat__body { fill: var(--color-text); }
 .bat__star { fill: var(--color-blood); transform-box: view-box; transform-origin: 798px 447px; }
 .hero__lamp {
@@ -192,6 +193,12 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
 .hero__bat { pointer-events: auto; cursor: pointer; }
 .hero__bat .bat__body { transform-box: view-box; transform-origin: 790px 700px; }
 .hero__bat.is-flapping .bat__body { animation: flap 900ms var(--ease-soft); }
+/* Живой взмах: кадры из видео (main.js). Пока они в ходу, неподвижный рисунок прячется; крылья в размахе шире рисунка */
+.hero__bat { overflow: visible; }
+.bat__flap { fill: var(--color-text); visibility: hidden; }
+.hero__bat.has-flap .bat__body { animation: none; }
+.hero__bat.is-live .bat__body { visibility: hidden; }
+.hero__bat.is-live .bat__flap { visibility: visible; }
 @keyframes flap { 0%, 100% { transform: none; } 20% { transform: scale(1.03, 0.72) translateY(14px); } 42% { transform: scale(0.98, 1.06) translateY(-10px); } 64% { transform: scale(1.02, 0.82) translateY(8px); } 82% { transform: scale(1, 1.02); } }
 .spark { position: absolute; z-index: 3; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; pointer-events: none; background: var(--color-blood-text); box-shadow: 0 0 8px 2px rgb(208 84 74 / 0.6); }
 .spark--bone { background: var(--color-text); box-shadow: 0 0 6px 1px rgb(236 228 214 / 0.5); }
@@ -216,7 +223,7 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
     mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 62%, transparent 99%), linear-gradient(to right, transparent 0, #000 22%);
     mask-composite: intersect;
   }
-  .hero__bat { left: auto; right: 2.5%; top: calc(var(--header-h) + 1.5rem); width: min(22%, 26rem); }
+  .hero__bat { left: auto; right: max(2.5%, 6.5rem); top: calc(var(--header-h) + 1.5rem); width: min(22%, 26rem); }
   .hero__text { margin-top: 0; padding-block: calc(var(--header-h) + var(--space-l)) var(--space-l); }
   .hero h1 .wordmark { width: min(46vw, 46rem); }
 }
@@ -226,7 +233,7 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
   .hero__cathedral, .hero__bat, .hero__text > * { opacity: 0; }
   .hero.is-ready .hero__cathedral { animation: dark-in 2600ms var(--ease-dark) both; }
   .hero.is-ready .hero__bat { animation: bat-in 1800ms var(--ease-soft) 1100ms both; }
-  .hero.is-ready .hero__bat .bat__body { animation: flap 600ms linear 1100ms 3; }
+  .hero.is-ready .hero__bat:not(.has-flap) .bat__body { animation: flap 600ms linear 1100ms 3; }
   /* Логотип проступает красными чернилами и высыхает до цвета кости */
   .hero.is-ready h1 .wordmark {
     -webkit-mask: linear-gradient(90deg, #000 40%, transparent 60%) 100% 0 / 260% 100% no-repeat;

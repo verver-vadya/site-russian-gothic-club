@@ -42,7 +42,7 @@ import { url, rub } from "../lib/url";
         <img src={url("/assets/img/cathedral-1120.webp")} srcset={`${url("/assets/img/cathedral-800.webp")} 800w, ${url("/assets/img/cathedral-1120.webp")} 1120w`} sizes="(min-width: 62rem) 52vw, 100vw" width="1120" height="1304" alt="" fetchpriority="high" decoding="async">
       </picture>
       <div class="hero__fog" style={`--fog: url(${url("/assets/img/fog.webp")})`}></div>
-      <Bat class="hero__bat" />
+      <Bat class="hero__bat" flap={url("/assets/data/bat-flap.json")} />
       <div class="hero__lamp" data-home="0.84,0.22"></div>
     </div>
     <div class="container hero__text">

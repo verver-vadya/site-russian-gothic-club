@@ -41,11 +41,32 @@ if (toggle && nav) {
 const hero = document.querySelector(".hero");
 const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const finePointer = matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+// Взмах крыльев: 29 кадров одного взмаха, обведённых в кривые из видео (assets/data/bat-flap.json).
+// Кадры в пикселях видео 2560×1440, в систему рисунка мыши (viewBox 40 260 1490 910) их переводит m: [масштаб, сдвиг x, сдвиг y].
+// Кадр 0 совпадает с неподвижным рисунком, поэтому взмах начинается и заканчивается без скачка.
+const flapSource = hero && !calm && hero.querySelector(".hero__bat[data-flap]");
+const flap = { frames: null, m: null, paths: null };
+flap.ready = flapSource
+  ? fetch(flapSource.dataset.flap).then((r) => r.json()).then((data) => {
+      flap.frames = data.frames; flap.m = data.m;
+      return flap;
+    }).catch(() => null)
+  : Promise.resolve(null);
+flap.path2d = () => (flap.paths ||= flap.frames.map((d) => new Path2D(d)));
+// Номер кадра по фазе взмаха (1 = один полный взмах)
+flap.at = (phase) => Math.floor((((phase % 1) + 1) % 1) * flap.frames.length) % flap.frames.length;
+// Фаза за время t из 0..1: n взмахов, быстро в начале и плавно затихая к концу, ровно на кадре 0
+flap.settle = (t, n) => n * (1 - (1 - t) * (1 - t));
+
 if (hero) {
   const img = hero.querySelector(".hero__cathedral img");
   let loaded = !img || (img.complete && img.naturalWidth);
   let wanted = !document.documentElement.dataset.intro;
-  const start = () => { if (loaded && wanted) requestAnimationFrame(() => hero.classList.add("is-ready")); };
+  const start = () => {
+    if (!loaded || !wanted || hero.classList.contains("is-ready")) return;
+    requestAnimationFrame(() => { hero.classList.add("is-ready"); hero.dispatchEvent(new Event("scene")); });
+  };
   hero.startScene = () => { wanted = true; start(); };
   if (!loaded) {
     const done = () => { loaded = true; start(); };
@@ -96,17 +117,47 @@ if (hero) {
   // Мышь живая: взмах крыльями при наведении и изредка сама по себе, по клику со звезды сыплются искры
   const bat = hero.querySelector(".hero__bat");
   if (bat && !calm) {
-    const flap = () => {
-      if (bat.classList.contains("is-flapping")) return;
-      bat.classList.add("is-flapping");
-      setTimeout(() => bat.classList.remove("is-flapping"), 950);
+    // Пока кадры не загрузились, мышь машет по-старому: рисунок сжимается и расправляется (CSS flap)
+    const wings = bat.querySelector(".bat__flap");
+    let playing = 0;
+    const play = (n, ms) => {
+      if (!flap.frames || !wings) {
+        if (bat.classList.contains("is-flapping")) return;
+        bat.classList.add("is-flapping");
+        setTimeout(() => bat.classList.remove("is-flapping"), 950);
+        return;
+      }
+      if (playing) return;
+      const t0 = performance.now();
+      let last = -1;
+      bat.classList.add("is-live");
+      const step = (now) => {
+        const t = Math.min(1, (now - t0) / ms);
+        const i = t < 1 ? flap.at(flap.settle(t, n)) : 0;
+        if (i !== last) { wings.setAttribute("d", flap.frames[i]); last = i; }
+        if (t < 1) playing = requestAnimationFrame(step);
+        else { playing = 0; bat.classList.remove("is-live"); }
+      };
+      playing = requestAnimationFrame(step);
     };
-    bat.addEventListener("pointerenter", flap);
+    flap.ready.then((f) => {
+      if (!f || !wings) return;
+      const [k, x, y] = f.m;
+      wings.setAttribute("transform", `matrix(${k} 0 0 ${k} ${x} ${y})`);
+      bat.classList.add("has-flap");
+    });
+    // Вылет из-за шпиля: три взмаха, последний затихает к посадке (CSS bat-in идёт 1800 мс с задержкой 1100 мс)
+    hero.addEventListener("scene", () => {
+      if (hero.classList.contains("from-flock")) return;
+      setTimeout(() => flap.ready.then(() => play(3, 1900)), 1100);
+    }, { once: true });
+    const wave = () => play(2, 2000);
+    bat.addEventListener("pointerenter", wave);
     let idle = 0;
-    const later = () => { clearTimeout(idle); idle = setTimeout(() => { if (!document.hidden && hero.classList.contains("is-ready")) flap(); later(); }, 7000 + Math.random() * 6000); };
+    const later = () => { clearTimeout(idle); idle = setTimeout(() => { if (!document.hidden && hero.classList.contains("is-ready")) play(1, 1500); later(); }, 7000 + Math.random() * 6000); };
     later();
     bat.addEventListener("click", () => {
-      flap();
+      wave();
       const art = hero.querySelector(".hero__art").getBoundingClientRect();
       const b = bat.getBoundingClientRect();
       // Центр звезды в координатах рисунка мыши (viewBox 40 260 1490 910): 798, 447
@@ -195,12 +246,56 @@ if (intro && introKind && hero) {
     };
     const small = sprite(192, false);
     const big = sprite(Math.round(Math.min(900, source.getBoundingClientRect().width * dpr * 1.2)) || 600, true);
+    // Живые кадры взмаха для стаи: заранее рисуем каждый кадр в маленькую картинку. Рамка box вмещает крылья во всех кадрах
+    const box = [-260, 290, 2210, 1120];
+    const mid = [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2];
+    let frames = null, starPath = null;
+    flap.ready.then((f) => {
+      if (!f) return;
+      const [m, mx, my] = f.m;
+      const k = 200 / vb[2];
+      frames = f.path2d().map((path) => {
+        const c = document.createElement("canvas");
+        c.width = Math.ceil(box[2] * k); c.height = Math.ceil(box[3] * k);
+        const g = c.getContext("2d");
+        g.scale(k, k); g.translate(-box[0], -box[1]);
+        g.transform(m, 0, 0, m, mx, my);
+        g.fillStyle = "#ece4d6";
+        g.fill(path, "evenodd");
+        return c;
+      });
+      starPath = new Path2D(source.querySelector(".bat__star").getAttribute("d"));
+    });
+    // Мышь из кадра i шириной w (как ширина неподвижного рисунка) с центром рисунка в x, y
+    const drawFrame = (i, x, y, w, alpha, tilt) => {
+      const k = w / vb[2];
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(x, y);
+      ctx.rotate(tilt);
+      ctx.drawImage(frames[i], (box[0] - mid[0]) * k, (box[1] - mid[1]) * k, box[2] * k, box[3] * k);
+      ctx.restore();
+    };
+    // Вожак крупный, его кадры рисуем кривыми прямо на холст, чтобы не мылились
+    const drawLeader = (i, x, y, w) => {
+      const [m, mx, my] = flap.m;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(w / vb[2], w / vb[2]);
+      ctx.translate(-mid[0], -mid[1]);
+      ctx.fillStyle = "#a3201f";
+      ctx.fill(starPath, "evenodd");
+      ctx.transform(m, 0, 0, m, mx, my);
+      ctx.fillStyle = "#ece4d6";
+      ctx.fill(flap.paths[i], "evenodd");
+      ctx.restore();
+    };
     const cx = W / 2, cy = H * 0.5;
     const n = Math.round(Math.min(170, Math.max(70, (W * H) / 9000)));
     const bats = Array.from({ length: n }, () => {
       const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * Math.hypot(W, H) * 0.55;
       const depth = Math.random();
-      return { x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d * 0.8, a, d, size: 22 + depth * depth * 110, alpha: 0.25 + depth * 0.75, phase: Math.random() * 6, speed: 0.016 + Math.random() * 0.012, out: 0.6 + Math.random() * 0.8 };
+      return { x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d * 0.8, a, d, size: 22 + depth * depth * 110, alpha: 0.25 + depth * 0.75, phase: Math.random() * 6, speed: 0.016 + Math.random() * 0.012, out: 0.6 + Math.random() * 0.8, beat: 1 / (420 + Math.random() * 380) };
     });
     bats.sort((p, q) => p.size - q.size);
     const target = source.getBoundingClientRect();
@@ -225,17 +320,21 @@ if (intro && introKind && hero) {
         const r = b.d + burst * burst * 900 * b.out;
         const x = cx + Math.cos(b.a) * r, y = cy + Math.sin(b.a) * r * 0.8 - burst * 120;
         b.phase += b.speed * 16;
-        draw(small, x, y, b.size, 0.45 + 0.55 * Math.abs(Math.sin(b.phase)), b.alpha, Math.sin(b.a) * 0.25);
+        if (frames) drawFrame(flap.at(b.phase + t * b.beat), x, y, b.size, b.alpha, Math.sin(b.a) * 0.25);
+        else draw(small, x, y, b.size, 0.45 + 0.55 * Math.abs(Math.sin(b.phase)), b.alpha, Math.sin(b.a) * 0.25);
       }
       // Вожак: из центра стаи к мыши в шапке, взмахи затихают перед посадкой
       const p = Math.min(1, Math.max(0, (t - 500) / 1700));
       const e = 1 - Math.pow(1 - p, 3);
       const tx = target.left + target.width / 2, ty = target.top + target.height / 2;
-      leader.x = cx + (tx - cx) * e + Math.sin(p * Math.PI) * -120;
-      leader.y = cy + (ty - cy) * e - Math.sin(p * Math.PI) * 80;
+      leader.x = cx + (tx - cx) * e - Math.sin(p * Math.PI) * Math.min(120, W * 0.12);
+      leader.y = cy + (ty - cy) * e - Math.sin(p * Math.PI) * Math.min(80, H * 0.08);
       leader.w = 70 + (target.width - 70) * e;
       const settle = 1 - e * 0.9;
-      draw(big, leader.x, leader.y, leader.w, 1 - settle * 0.45 * Math.abs(Math.sin(t / 70)), 1, 0);
+      // Четыре взмаха, к посадке всё медленнее; садится на кадре 0, он совпадает с мышью в шапке
+      const q = Math.min(1, t / 2200);
+      if (frames) drawLeader(q < 1 ? flap.at(flap.settle(q, 4)) : 0, leader.x, leader.y, leader.w);
+      else draw(big, leader.x, leader.y, leader.w, 1 - settle * 0.45 * Math.abs(Math.sin(t / 70)), 1, 0);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
