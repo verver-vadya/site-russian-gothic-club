@@ -18,8 +18,8 @@ export const sketchFilters = [
   { value: "", label: "Все" },
   { value: "realizm", label: "Реализм" },
   { value: "gravyura", label: "Гравюра" },
-  { value: "blackwork", label: "Blackwork и орнамент" },
-  { value: "dark-art", label: "Dark art" },
+  { value: "blackwork", label: "Блэкворк и орнамент" },
+  { value: "dark-art", label: "Тёмное искусство" },
   { value: "red", label: "Красным" },
 ];
 

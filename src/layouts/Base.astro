@@ -4,6 +4,7 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import { url } from "../lib/url";
 import cormorantCyr from "../fonts/cormorant-garamond-cyrillic-600-normal.woff2?url";
+import ponomarCyr from "../fonts/ponomar-cyrillic-400-normal.woff2?url";
 import oldStandardCyr from "../fonts/old-standard-tt-cyrillic-400-normal.woff2?url";
 
 interface Props {
@@ -36,6 +37,7 @@ const ogImage = new URL("/assets/img/og.jpg", Astro.site);
   <meta property="og:image" content={ogImage}>
   <link rel="icon" href={url("/favicon.svg")} type="image/svg+xml">
   <link rel="preload" href={cormorantCyr} as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href={ponomarCyr} as="font" type="font/woff2" crossorigin>
   <link rel="preload" href={oldStandardCyr} as="font" type="font/woff2" crossorigin>
   <slot name="head" />
   <script is:inline src={url("/assets/js/main.js")} defer></script>
