@@ -1,0 +1,11 @@
+---
+import Base from "../layouts/Base.astro";
+import { url } from "../lib/url";
+---
+<Base title="Страница не найдена — Russian Gothic Club" description="Такой страницы нет." noindex>
+  <section class="container page-head">
+    <h1>Эта страница ушла в ночь</h1>
+    <p>Такой страницы на сайте нет. Возможно, ссылка устарела или в адресе опечатка.</p>
+    <p><a class="link-arrow" href={url("/")}>На главную</a></p>
+  </section>
+</Base>

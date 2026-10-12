@@ -1,0 +1,35 @@
+---
+import Base from "../layouts/Base.astro";
+import Framed from "../components/Framed.astro";
+import { sketches, sketchFilters, authors } from "../data/sketches";
+import { url, rub } from "../lib/url";
+const free = sketches.filter((s) => !s.taken).length;
+---
+<Base title="Свободные эскизы — Russian Gothic Club" description="Готовые эскизы тату: гравюра, blackwork, dark art и реализм. Каждый эскиз набиваем только один раз.">
+  <section class="container page-head">
+    <h1>Свободные эскизы</h1>
+    <p class="muted">Готовые рисунки мастеров и гостей студии. Выбираете эскиз, мы подгоняем его под место на теле и больше никому его не бьём. Сейчас свободно {free} из {sketches.length}.</p>
+  </section>
+  <section class="section section--flush" aria-label="Эскизы">
+    <div class="container">
+      <div class="filter" role="group" aria-label="Показать эскизы по стилю" data-filter="sketches">
+        {sketchFilters.map((f, i) => <button type="button" data-value={f.value} aria-pressed={i === 0 ? "true" : "false"}>{f.label}</button>)}
+      </div>
+      <ul class="sketch-list sketch-list--all" data-filter-list>
+        {sketches.map((s) => (
+          <li id={s.slug} data-groups={[...s.styles, s.red ? "red" : ""].join(" ").trim()}>
+            <div class="sketch">
+              <Framed frame={s.frame} land={s.land} img={s.img} bat={s.bat} alt={`Эскиз «${s.name}»`} taken={s.taken} />
+              <h2>{s.name}</h2>
+              <p class="sketch__meta">{s.size} · {s.place}</p>
+              {s.author && <p class="sketch__meta">Автор: <a href={authors[s.author].href} target="_blank" rel="noopener">{authors[s.author].name}</a></p>}
+              <p class="sketch__price">{s.taken ? "Уже набит" : rub(s.price)}</p>
+              {!s.taken && <p class="sketch__cta"><a class="link-arrow" href={url(`/zapis/?eskiz=${s.slug}`)}>Забронировать</a></p>}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p class="muted sketch-note">Старые гравюры и орнаменты XVI–XIX веков мы перерисовываем под кожу: убираем мелкий штрих, который расплывётся, и подгоняем размер. Эскизы с подписью автора набивает приглашённый мастер.</p>
+    </div>
+  </section>
+</Base>

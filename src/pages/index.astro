@@ -1,0 +1,84 @@
+---
+import Base from "../layouts/Base.astro";
+import Logo from "../components/Logo.astro";
+import Bat from "../components/Bat.astro";
+import Star from "../components/Star.astro";
+import Framed from "../components/Framed.astro";
+import { site, styles } from "../data/site";
+import { sketches } from "../data/sketches";
+import { url, rub } from "../lib/url";
+---
+<Base title="Russian Gothic Club — тату-студия гравюры и готики в Москве" description="Гравюра, blackwork, dark art и готический леттеринг. Свободные эскизы и рисунок под вас. Москва, Китай-город." overHero>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero__art" aria-hidden="true" data-overlap-ok>
+      <picture class="hero__cathedral">
+        <img src={url("/assets/img/cathedral-1120.webp")} srcset={`${url("/assets/img/cathedral-800.webp")} 800w, ${url("/assets/img/cathedral-1120.webp")} 1120w`} sizes="(min-width: 62rem) 52vw, 100vw" width="1120" height="1304" alt="" fetchpriority="high" decoding="async">
+      </picture>
+      <Bat class="hero__bat" />
+      <div class="hero__lamp" data-home="0.84,0.22"></div>
+    </div>
+    <div class="container hero__text">
+      <p class="label hero__kicker">{site.tagline} · {site.city}</p>
+      <h1 id="hero-title"><Logo /><span class="visually-hidden">Russian Gothic Club</span></h1>
+      <p class="hero__lead">Гравюра, blackwork и готика. Рисуем эскиз под вас или отдаём один из свободных, и каждый эскиз набиваем только один раз.</p>
+      <div class="hero__actions">
+        <a class="button" href={url("/zapis/")}>Записаться на консультацию</a>
+        <a class="link-arrow" href={url("/eskizy/")}>Свободные эскизы</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section sketches" aria-labelledby="sketches-title">
+    <div class="container">
+      <div class="section-head">
+        <h2 id="sketches-title">Свободные эскизы</h2>
+        <p class="muted">Готовые рисунки мастеров. Выбираете эскиз, мы подгоняем его под место на теле и больше никому его не бьём.</p>
+      </div>
+      <ul class="sketch-list">
+        {sketches.filter((s) => s.home).map((s) => (
+          <li>
+            <a class="sketch" href={url(`/eskizy/#${s.slug}`)}>
+              <Framed frame={s.frame} land={s.land} img={s.img} bat={s.bat} alt={`Эскиз «${s.name}»`} taken={s.taken} />
+              <h3>{s.name}</h3>
+              <p class="sketch__meta">{s.size} · {s.place}</p>
+              <p class="sketch__price">{s.taken ? "Уже набит" : rub(s.price)}</p>
+            </a>
+          </li>
+        ))}
+      </ul>
+      <a class="link-arrow" href={url("/eskizy/")}>Все эскизы</a>
+    </div>
+  </section>
+
+  <section class="section styles" aria-labelledby="styles-title">
+    <div class="container">
+      <div class="section-head">
+        <h2 id="styles-title">В чём работаем</h2>
+      </div>
+      <ol class="style-list">
+        {styles.map((s, i) => (
+          <li>
+            <a href={url(`/raboty/?stil=${s.slug}`)}>
+              <span class="style-list__num">{["I", "II", "III", "IV"][i]}</span>
+              <span class="style-list__name">{s.name}</span>
+              <span class="style-list__note">{s.note}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="section visit" aria-labelledby="visit-title">
+    <div class="container visit__inner">
+      <Star class="visit__star" />
+      <h2 id="visit-title">Сначала консультация</h2>
+      <p>Полчаса в студии или в Telegram: смотрим место, обсуждаем размер и сюжет, называем цену. Консультация бесплатная и ни к чему не обязывает.</p>
+      <p class="muted">{site.address}. {site.metro}. {site.hours}.</p>
+      <div class="hero__actions visit__actions">
+        <a class="button" href={url("/zapis/")}>Записаться на консультацию</a>
+        <a class="link-arrow" href={`https://t.me/${site.telegram}`} target="_blank" rel="noopener">Написать в Telegram</a>
+      </div>
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,24 @@
+---
+// Разделы, которые появятся после согласования главной: пока короткие страницы-заглушки,
+// чтобы меню и ссылки с главной никуда не вели в пустоту.
+import Base from "../layouts/Base.astro";
+import { nav } from "../data/site";
+import { url } from "../lib/url";
+
+export function getStaticPaths() {
+  const pages = [
+    ...nav.filter((n) => n.href !== "/eskizy/").map((n) => ({ section: n.href.replaceAll("/", ""), title: n.label })),
+    { section: "zapis", title: "Запись на консультацию" },
+    { section: "privacy", title: "Политика конфиденциальности" },
+  ];
+  return pages.map((p) => ({ params: { section: p.section }, props: { title: p.title } }));
+}
+const { title } = Astro.props;
+---
+<Base title={`${title} — Russian Gothic Club`} description={`${title}: раздел сайта тату-студии Russian Gothic Club.`} noindex>
+  <section class="container page-head">
+    <h1>{title}</h1>
+    <p>Этот раздел сделаем после того, как согласуем главную страницу.</p>
+    <p><a class="link-arrow" href={url("/")}>На главную</a></p>
+  </section>
+</Base>

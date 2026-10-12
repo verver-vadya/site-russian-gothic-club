@@ -1,0 +1,22 @@
+---
+// Эскиз на светлой бумаге в резной раме, как картина на тёмной стене
+import { frames, woodFrames, singleFrames, ebonyLand, frameLook, type FrameName } from "../data/frames";
+import { url } from "../lib/url";
+import Bat from "./Bat.astro";
+interface Props { frame?: FrameName; land?: boolean; img?: string; bat?: boolean; alt: string; taken?: boolean }
+const { frame = "rococo", land = false, img, bat, alt, taken = false } = Astro.props;
+const wood = frameLook === "wood";
+const sheet = frameLook === "sheet";
+const single = frameLook in singleFrames ? singleFrames[frameLook as keyof typeof singleFrames] : null;
+const f = land && frameLook === "ebony" ? ebonyLand : single ? single[frame] : wood ? woodFrames[frame] : frames[frame];
+const [t, r, b, l] = f.opening;
+const src = sheet ? f.src.replace("-800", "-sheet-800") : f.src;
+const round = wood && woodFrames[frame].round;
+---
+<div class:list={["framed", { "framed--sheet": sheet, "framed--wood": wood || single }]} style={`--ratio: ${f.width} / ${f.height}`}>
+  <div class:list={["framed__paper", { "framed__paper--round": round }]} style={`inset: ${t}% ${r}% ${b}% ${l}%`}>
+    {bat ? <Bat class="framed__bat" /> : <img src={url(`/assets/img/${img}`)} width="800" height="1000" alt={alt} loading="lazy" decoding="async">}
+  </div>
+  <img class="framed__frame" src={url(`/assets/img/${src}`)} width={f.width} height={f.height} alt="" loading="lazy" decoding="async">
+  {taken && <span class="stamp" data-overlap-ok>Занят</span>}
+</div>
