@@ -20,7 +20,7 @@ const free = sketches.filter((s) => !s.taken).length;
           <li id={s.slug} data-groups={[...s.styles, s.red ? "red" : ""].join(" ").trim()}>
             <div class="sketch">
               <Framed frame={s.frame} land={s.land} img={s.img} bat={s.bat} alt={`Эскиз «${s.name}»`} taken={s.taken} />
-              <h3>{s.name}</h3>
+              <h2>{s.name}</h2>
               <p class="sketch__meta">{s.size} · {s.place}</p>
               {s.author && <p class="sketch__meta">Автор: <a href={authors[s.author].href} target="_blank" rel="noopener">{authors[s.author].name}</a></p>}
               <p class="sketch__price">{s.taken ? "Уже набит" : rub(s.price)}</p>

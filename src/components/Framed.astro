@@ -18,5 +18,5 @@ const round = wood && woodFrames[frame].round;
     {bat ? <Bat class="framed__bat" /> : <img src={url(`/assets/img/${img}`)} width="800" height="1000" alt={alt} loading="lazy" decoding="async">}
   </div>
   <img class="framed__frame" src={url(`/assets/img/${src}`)} width={f.width} height={f.height} alt="" loading="lazy" decoding="async">
-  {taken && <span class="stamp">Занят</span>}
+  {taken && <span class="stamp" data-overlap-ok>Занят</span>}
 </div>
