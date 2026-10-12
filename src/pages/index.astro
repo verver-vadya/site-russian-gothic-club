@@ -3,6 +3,7 @@ import Base from "../layouts/Base.astro";
 import Logo from "../components/Logo.astro";
 import Bat from "../components/Bat.astro";
 import Star from "../components/Star.astro";
+import Framed from "../components/Framed.astro";
 import { site, styles } from "../data/site";
 import { sketches } from "../data/sketches";
 import { url, rub } from "../lib/url";
@@ -37,12 +38,7 @@ import { url, rub } from "../lib/url";
         {sketches.map((s) => (
           <li>
             <a class="sketch" href={url(`/eskizy/#${s.slug}`)}>
-              <div class="sketch__frame">
-                {s.bat ? <Bat class="sketch__bat" /> : (
-                  <img src={url(`/assets/img/${s.img}-800.webp`)} width="800" height="1000" alt={`Эскиз «${s.name}»`} loading="lazy" decoding="async">
-                )}
-                {s.taken && <span class="stamp">Занят</span>}
-              </div>
+              <Framed frame={s.frame} img={s.img} bat={s.bat} alt={`Эскиз «${s.name}»`} taken={s.taken} />
               <h3>{s.name}</h3>
               <p class="sketch__meta">{s.size} · {s.place}</p>
               <p class="sketch__price">{s.taken ? "Уже набит" : rub(s.price)}</p>
