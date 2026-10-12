@@ -148,7 +148,7 @@ if (hero) {
     });
     // Вылет из-за шпиля: три взмаха, последний затихает к посадке (CSS bat-in идёт 1800 мс с задержкой 1100 мс)
     hero.addEventListener("scene", () => {
-      if (hero.classList.contains("from-flock")) return;
+      if (hero.classList.contains("from-intro")) return;
       setTimeout(() => flap.ready.then(() => play(3, 1900)), 1100);
     }, { once: true });
     const wave = () => play(2, 2000);
@@ -180,7 +180,7 @@ if (hero) {
   }
 }
 
-// Заставка при первом заходе за визит: «Свеча» или «Стая» (решение в <head> главной, data-intro на <html>)
+// Заставка при первом заходе за визит: «Свеча» или «Звезда» (решение в <head> главной, data-intro на <html>)
 const intro = document.querySelector(".intro");
 const introKind = document.documentElement.dataset.intro;
 if (intro && introKind && hero) {
@@ -223,123 +223,154 @@ if (intro && introKind && hero) {
     at(1200, () => { intro.classList.add("is-open"); hero.startScene(); });
     at(2900, () => finish(false));
   } else {
-    // Стая: мыши кружат, разлетаются от центра; вожак летит на место мыши в шапке и становится ею
-    hero.classList.add("from-flock");
-    const canvas = intro.querySelector(".intro__flock");
+    // Звезда: в темноте вспыхивает красная звезда, к ней из глубины летит мышь,
+    // садится на своё место в шапке и сильным взмахом сдувает темноту, как дым
+    hero.classList.add("from-intro");
+    const canvas = intro.querySelector(".intro__sky");
     const ctx = canvas.getContext("2d");
     const dpr = Math.min(2, devicePixelRatio || 1);
     const W = innerWidth, H = innerHeight;
     canvas.width = W * dpr; canvas.height = H * dpr;
-    ctx.scale(dpr, dpr);
     const source = hero.querySelector(".hero__bat");
-    const vb = [40, 260, 1490, 910];
-    const sprite = (w, withStar) => {
-      const c = document.createElement("canvas");
-      c.width = w; c.height = Math.round(w * vb[3] / vb[2]);
-      const g = c.getContext("2d");
-      g.scale(w / vb[2], w / vb[2]);
-      g.translate(-vb[0], -vb[1]);
-      g.fillStyle = "#ece4d6";
-      g.fill(new Path2D(source.querySelector(".bat__body").getAttribute("d")), "evenodd");
-      if (withStar) { g.fillStyle = "#a3201f"; g.fill(new Path2D(source.querySelector(".bat__star").getAttribute("d")), "evenodd"); }
-      return c;
-    };
-    const small = sprite(192, false);
-    const big = sprite(Math.round(Math.min(900, source.getBoundingClientRect().width * dpr * 1.2)) || 600, true);
-    // Живые кадры взмаха для стаи: заранее рисуем каждый кадр в маленькую картинку. Рамка box вмещает крылья во всех кадрах
-    const box = [-260, 290, 2210, 1120];
-    const mid = [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2];
-    let frames = null, starPath = null;
-    flap.ready.then((f) => {
-      if (!f) return;
-      const [m, mx, my] = f.m;
-      const k = 200 / vb[2];
-      frames = f.path2d().map((path) => {
-        const c = document.createElement("canvas");
-        c.width = Math.ceil(box[2] * k); c.height = Math.ceil(box[3] * k);
-        const g = c.getContext("2d");
-        g.scale(k, k); g.translate(-box[0], -box[1]);
-        g.transform(m, 0, 0, m, mx, my);
-        g.fillStyle = "#ece4d6";
-        g.fill(path, "evenodd");
-        return c;
-      });
-      starPath = new Path2D(source.querySelector(".bat__star").getAttribute("d"));
+    const vb = [40, 260, 1490, 910], mid = [785, 715];
+    const target = source.getBoundingClientRect();
+    const home = { x: target.left + target.width / 2, y: target.top + target.height / 2, w: target.width };
+    const k = target.width / vb[2];
+    const star = { x: target.left + (798 - vb[0]) * k, y: target.top + (447 - vb[1]) * k };
+    const starPath = new Path2D(source.querySelector(".bat__star").getAttribute("d"));
+    const bodyPath = new Path2D(source.querySelector(".bat__body").getAttribute("d"));
+    const night = getComputedStyle(root).getPropertyValue("--color-bg").trim() || "#0e0c0b";
+    // Темнота рисуется на своём холсте в половину разрешения: края дыма мягкие, а считать вчетверо меньше
+    const fog = document.createElement("canvas");
+    fog.width = Math.ceil(W / 2); fog.height = Math.ceil(H / 2);
+    const fg = fog.getContext("2d");
+    const clamp = (v) => Math.min(1, Math.max(0, v));
+    const span = (t, a, b) => clamp((t - a) / (b - a));
+    const smooth = (v) => v * v * (3 - 2 * v);
+    const outCubic = (v) => 1 - Math.pow(1 - v, 3);
+    // Расписание, мс: звезда 250–1050 и к месту до 2050, полёт мыши 800–2100, взмах-порыв 2100–2900, дым уходит 2350–3600
+    const FLY = [800, 2100], GUST = [2100, 2900], BLOW = 2350, END = 3600;
+    // Клубы дыма: рождаются вдоль крыльев в начале порыва и разлетаются от мыши, вниз сильнее, чем вверх
+    const far = Math.hypot(W, H);
+    const puffs = Array.from({ length: 70 }, () => {
+      const side = Math.random() * 2 - 1;
+      const a = Math.atan2(0.35 + Math.random() * 0.9 - (Math.abs(side) < 0.3 ? 0.6 : 0), side) + (Math.random() - 0.5) * 0.9;
+      return {
+        x: home.x + side * home.w * 0.55, y: home.y + home.w * (0.05 + Math.random() * 0.15),
+        a, v: far * (0.45 + Math.random() * 0.7), r: home.w * (0.18 + Math.random() * 0.3), grow: 1.6 + Math.random() * 2.4,
+        delay: Math.random() * 260,
+      };
     });
-    // Мышь из кадра i шириной w (как ширина неподвижного рисунка) с центром рисунка в x, y
-    const drawFrame = (i, x, y, w, alpha, tilt) => {
-      const k = w / vb[2];
+    // Звезда вспыхивает крупно в середине экрана, потом плывёт на своё место над мышью и уменьшается.
+    // Мышь видна только спереди, поэтому она только приближается и растёт, а путь к месту прокладывает звезда
+    const bigK = Math.min(W, H) * 0.3 / 312;
+    const center = { x: W / 2, y: H * 0.42 };
+    const drawStar = (t) => {
+      const on = span(t, 250, 1050);
+      if (!on) return;
+      // Вспышка с перелётом и лёгким поворотом, потом звезда тихо дышит
+      const pop = on < 0.6 ? outCubic(on / 0.6) * 1.35 : 1.35 - 0.35 * smooth((on - 0.6) / 0.4);
+      const breathe = 1 + Math.sin(t / 260) * 0.03 * on;
+      const glow = 1 - smooth(span(t, 1600, 2800)) * 0.6;
+      const go = smooth(span(t, 1050, 2050));
+      const sk = bigK + (k - bigK) * go;
+      const x = center.x + (star.x - center.x) * go;
+      const y = center.y + (star.y - center.y) * go - Math.sin(go * Math.PI) * H * 0.06;
       ctx.save();
-      ctx.globalAlpha = alpha;
       ctx.translate(x, y);
-      ctx.rotate(tilt);
-      ctx.drawImage(frames[i], (box[0] - mid[0]) * k, (box[1] - mid[1]) * k, box[2] * k, box[3] * k);
+      // Ореол вокруг звезды
+      const R = 500 * sk * pop;
+      const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+      halo.addColorStop(0, `rgb(208 84 74 / ${0.42 * on * glow})`);
+      halo.addColorStop(1, "rgb(208 84 74 / 0)");
+      ctx.fillStyle = halo;
+      ctx.fillRect(-R, -R, R * 2, R * 2);
+      ctx.rotate((1 - on) * -0.5 + go * Math.PI * 0.5);
+      ctx.scale(sk * pop * breathe, sk * pop * breathe);
+      ctx.translate(-798, -447);
+      ctx.shadowColor = `rgb(208 84 74 / ${0.85 * glow})`;
+      ctx.shadowBlur = 28 * dpr * glow;
+      ctx.fillStyle = "#a3201f";
+      ctx.globalAlpha = Math.min(1, on * 3);
+      ctx.fill(starPath, "evenodd");
       ctx.restore();
     };
-    // Вожак крупный, его кадры рисуем кривыми прямо на холст, чтобы не мылились
-    const drawLeader = (i, x, y, w) => {
-      const [m, mx, my] = flap.m;
+    const drawBat = (t) => {
+      const p = span(t, FLY[0], FLY[1]);
+      if (!p) return;
+      // Издалека к нам: ширина растёт как при приближении, путь чуть изгибается
+      // Вылетает из сияния звезды в середине экрана. Пока мышь далеко, она почти у точки схода, ближе к нам уходит к своему месту
+      const e = outCubic(p);
+      const depth = 1 / (1 + 22 * (1 - e));
+      const near = (depth - 1 / 23) / (1 - 1 / 23);
+      const x = center.x + (home.x - center.x) * near + Math.sin(near * Math.PI) * W * 0.04;
+      const y = center.y + (home.y - center.y) * near + Math.sin(near * Math.PI) * H * 0.04;
+      const w = home.w * depth;
+      // Взмахи: четыре по пути, к посадке реже; затем один сильный взмах-порыв
+      let frame = 0;
+      if (flap.frames) {
+        if (t < GUST[0]) frame = flap.at(flap.settle(p, 4));
+        else if (t < GUST[1]) frame = flap.at(smooth(span(t, GUST[0], GUST[1])));
+      }
       ctx.save();
+      ctx.globalAlpha = Math.min(1, p * 5);
       ctx.translate(x, y);
       ctx.scale(w / vb[2], w / vb[2]);
       ctx.translate(-mid[0], -mid[1]);
-      ctx.fillStyle = "#a3201f";
-      ctx.fill(starPath, "evenodd");
-      ctx.transform(m, 0, 0, m, mx, my);
       ctx.fillStyle = "#ece4d6";
-      ctx.fill(flap.paths[i], "evenodd");
+      if (flap.frames) {
+        const [m, mx, my] = flap.m;
+        ctx.transform(m, 0, 0, m, mx, my);
+        ctx.fill(flap.path2d()[frame], "evenodd");
+      } else {
+        ctx.fill(bodyPath, "evenodd");
+      }
       ctx.restore();
     };
-    const cx = W / 2, cy = H * 0.5;
-    const n = Math.round(Math.min(170, Math.max(70, (W * H) / 9000)));
-    const bats = Array.from({ length: n }, () => {
-      const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * Math.hypot(W, H) * 0.55;
-      const depth = Math.random();
-      return { x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d * 0.8, a, d, size: 22 + depth * depth * 110, alpha: 0.25 + depth * 0.75, phase: Math.random() * 6, speed: 0.016 + Math.random() * 0.012, out: 0.6 + Math.random() * 0.8, beat: 1 / (420 + Math.random() * 380) };
-    });
-    bats.sort((p, q) => p.size - q.size);
-    const target = source.getBoundingClientRect();
-    const leader = { x: cx, y: cy, w: 60 };
-    const t0 = performance.now();
-    const draw = (img, x, y, w, flapY, alpha, tilt) => {
-      const h = w * img.height / img.width;
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.translate(x, y);
-      ctx.rotate(tilt);
-      ctx.scale(1, flapY);
-      ctx.drawImage(img, -w / 2, -h / 2, w, h);
-      ctx.restore();
+    const drawNight = (t) => {
+      const b = t - BLOW;
+      fg.globalCompositeOperation = "source-over";
+      fg.clearRect(0, 0, fog.width, fog.height);
+      fg.globalAlpha = 1 - smooth(span(t, END - 700, END));
+      fg.fillStyle = night;
+      fg.fillRect(0, 0, fog.width, fog.height);
+      if (b > 0) {
+        fg.globalCompositeOperation = "destination-out";
+        fg.globalAlpha = 1;
+        const puff = (x, y, r, a) => {
+          const g = fg.createRadialGradient(x / 2, y / 2, 0, x / 2, y / 2, r / 2);
+          g.addColorStop(0, `rgb(0 0 0 / ${a})`);
+          g.addColorStop(0.55, `rgb(0 0 0 / ${a * 0.7})`);
+          g.addColorStop(1, "rgb(0 0 0 / 0)");
+          fg.fillStyle = g;
+          fg.fillRect((x - r) / 2, (y - r) / 2, r, r);
+        };
+        // Сердцевина: просвет у мыши растёт и кончается за краями экрана
+        const core = smooth(span(b, 0, 1150));
+        puff(home.x, home.y + home.w * 0.1, home.w * 0.8 + core * far * 1.5, 1);
+        for (const q of puffs) {
+          const s = span(b - q.delay, 0, 1000);
+          if (!s) continue;
+          const d = outCubic(s) * q.v;
+          puff(q.x + Math.cos(q.a) * d, q.y + Math.sin(q.a) * d, q.r * (1 + q.grow * s), Math.min(1, s * 4));
+        }
+      }
+      ctx.drawImage(fog, 0, 0, W, H);
     };
     const tick = (now) => {
       const t = now - t0;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
-      const burst = Math.max(0, t - 650) / 1000;
-      for (const b of bats) {
-        b.a += 0.004 + 0.006 / (1 + b.d / 300);
-        const r = b.d + burst * burst * 900 * b.out;
-        const x = cx + Math.cos(b.a) * r, y = cy + Math.sin(b.a) * r * 0.8 - burst * 120;
-        b.phase += b.speed * 16;
-        if (frames) drawFrame(flap.at(b.phase + t * b.beat), x, y, b.size, b.alpha, Math.sin(b.a) * 0.25);
-        else draw(small, x, y, b.size, 0.45 + 0.55 * Math.abs(Math.sin(b.phase)), b.alpha, Math.sin(b.a) * 0.25);
-      }
-      // Вожак: из центра стаи к мыши в шапке, взмахи затихают перед посадкой
-      const p = Math.min(1, Math.max(0, (t - 500) / 1700));
-      const e = 1 - Math.pow(1 - p, 3);
-      const tx = target.left + target.width / 2, ty = target.top + target.height / 2;
-      leader.x = cx + (tx - cx) * e - Math.sin(p * Math.PI) * Math.min(120, W * 0.12);
-      leader.y = cy + (ty - cy) * e - Math.sin(p * Math.PI) * Math.min(80, H * 0.08);
-      leader.w = 70 + (target.width - 70) * e;
-      const settle = 1 - e * 0.9;
-      // Четыре взмаха, к посадке всё медленнее; садится на кадре 0, он совпадает с мышью в шапке
-      const q = Math.min(1, t / 2200);
-      if (frames) drawLeader(q < 1 ? flap.at(flap.settle(q, 4)) : 0, leader.x, leader.y, leader.w);
-      else draw(big, leader.x, leader.y, leader.w, 1 - settle * 0.45 * Math.abs(Math.sin(t / 70)), 1, 0);
+      drawNight(t);
+      drawBat(t);
+      drawStar(t);
+      if (!intro.classList.contains("is-drawn")) intro.classList.add("is-drawn");
       raf = requestAnimationFrame(tick);
     };
+    const t0 = performance.now();
     raf = requestAnimationFrame(tick);
-    at(700, () => { intro.classList.add("is-open"); hero.startScene(); });
-    at(2250, () => finish(false));
+    at(BLOW, () => { intro.classList.add("is-open"); hero.startScene(); });
+    at(END, () => finish(false));
   }
 }
 

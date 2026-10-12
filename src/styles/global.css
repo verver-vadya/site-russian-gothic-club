@@ -240,10 +240,11 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
     mask: linear-gradient(90deg, #000 40%, transparent 60%) 100% 0 / 260% 100% no-repeat;
     animation: ink-in 2200ms var(--ease-soft) 300ms both;
   }
-  /* После «Стаи» мышь не вылетает сама: на её место садится вожак стаи */
-  .hero.is-ready.from-flock .hero__bat { animation: none; opacity: 0; }
-  .hero.is-ready.from-flock .hero__bat .bat__body { animation: none; }
-  .hero.is-ready.from-flock.bat-landed .hero__bat { opacity: 1; transition: opacity 350ms ease; }
+  /* После «Звезды» мышь не вылетает сама: она уже прилетела в заставке и сидит под звездой */
+  .hero.is-ready.from-intro .hero__bat { animation: none; opacity: 0; }
+  .hero.is-ready.from-intro .hero__bat .bat__body { animation: none; }
+  .hero.is-ready.from-intro.bat-landed .hero__bat { opacity: 1; transition: opacity 350ms ease; }
+  .hero.is-ready.from-intro .bat__star { animation: star-twinkle 5200ms ease-in-out 1500ms infinite; }
   .hero.is-ready .hero__lamp { opacity: 1; transition: opacity 2400ms var(--ease-dark) 600ms; }
   .hero.is-ready .hero__text > * { animation: rise-in 1100ms var(--ease-soft) both; }
   .hero.is-ready .hero__text > :nth-child(2) { animation-delay: 150ms; }
@@ -402,17 +403,17 @@ img.framed__stencil { filter: url(#stencil); }
 .section--flush { padding-top: 0; }
 
 /* ---------- Заставка при первом заходе (главная) ----------
-   Решение показывать принимает скрипт в <head>: data-intro="svecha" | "staya" на <html>. Клик, клавиша или прокрутка её пропускают */
+   Решение показывать принимает скрипт в <head>: data-intro="svecha" | "zvezda" на <html>. Клик, клавиша или прокрутка её пропускают */
 .intro { display: none; }
 [data-intro] .intro { display: block; position: fixed; inset: 0; z-index: 100; cursor: pointer; }
 [data-intro] { overflow: hidden; }
 [data-intro].intro-done { overflow: visible; }
 .intro.is-gone { opacity: 0; transition: opacity 500ms var(--ease-soft); pointer-events: none; }
-.intro__dark, .intro__flock { position: absolute; inset: 0; }
+.intro__dark, .intro__sky { position: absolute; inset: 0; }
 .intro__flame { display: none; }
 
 /* «Свеча»: в темноте вспыхивает огонёк, круг тёплого света растёт и открывает сайт */
-[data-intro="svecha"] .intro__flock { display: none; }
+[data-intro="svecha"] .intro__sky { display: none; }
 [data-intro="svecha"] .intro__dark {
   --r: 0px;
   background:
@@ -443,9 +444,9 @@ img.framed__stencil { filter: url(#stencil); }
 }
 @keyframes glow { from { opacity: 0.75; transform: scale(0.95); } to { opacity: 1; transform: scale(1.06); } }
 
-/* «Стая»: экран закрыт стаей летучих мышей, они разлетаются, одна садится на своё место у собора */
-[data-intro="staya"] .intro__dark { background: var(--color-bg); }
-[data-intro="staya"] .intro.is-open .intro__dark { opacity: 0; transition: opacity 1300ms var(--ease-soft) 150ms; }
+/* «Звезда»: темноту, звезду и мышь рисует холст (main.js). Пока он не нарисовал первый кадр, экран просто тёмный */
+[data-intro="zvezda"] .intro__dark { background: var(--color-bg); }
+[data-intro="zvezda"] .intro.is-drawn .intro__dark { display: none; }
 
 /* ---------- Примерка (главная) ---------- */
 .tryon__grid { display: grid; gap: var(--space-l); align-items: start; }
