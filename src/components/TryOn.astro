@@ -1,14 +1,16 @@
 ---
-// Примерка: свободный эскиз на гравюре Аполлона Бельведерского (А. Б. Дюран, 1825, Met, общественное достояние).
-// Масштаб по пропорциям: фигура от макушки до стоп занимает 83,5 % высоты листа и считается ростом 180 см.
-// Чернила видны только на коже (маска apollon-skin.png). Место задаёт центр (в % ширины и высоты листа) и наклон эскиза вдоль руки или ноги. Двигать эскиз можно мышью, пальцем и стрелками.
+// Примерка. Основной вид — 3D: гипсовый слепок Аполлона Бельведерского (скан SMK, общественное достояние), эскиз ложится на кожу
+// наклейкой (src/scripts/tryon3d.js). На компьютере 3D стоит прямо в разделе, на телефоне открывается на весь экран по кнопке.
+// Без WebGL остаётся плоская примерка на гравюре Аполлона (А. Б. Дюран, 1825, Met, общественное достояние):
+// фигура от макушки до стоп занимает 83,5 % высоты листа и считается ростом 180 см, чернила видны только на коже (маска apollon-skin.png).
+// Место задаёт центр (в % ширины и высоты листа) и наклон эскиза вдоль руки или ноги; data-place — то же место в 3D.
 import { sketches } from "../data/sketches";
 import { url } from "../lib/url";
 
-const picks = ["pes-so-strelami", "krasnaya-borzaya", "cerber", "grifon", "past", "voroniy-oval", "pavlinoglazka", "dve-borzye"];
-const list = picks
-  .map((slug) => sketches.find((s) => s.slug === slug && !s.taken && s.img))
-  .filter((s) => s !== undefined)
+const first8 = ["pes-so-strelami", "krasnaya-borzaya", "cerber", "grifon", "past", "voroniy-oval", "pavlinoglazka", "dve-borzye"];
+const list = sketches
+  .filter((s) => !s.taken && s.img)
+  .sort((a, b) => (first8.indexOf(a.slug) + 1 || 99) - (first8.indexOf(b.slug) + 1 || 99))
   .map((s) => {
     const [w, h] = s.size.match(/\d+/g)!.map(Number);
     return { ...s, cm: Math.max(w, h) };
@@ -18,13 +20,14 @@ const places = [
   { id: "shoulder", label: "Плечо", x: 28.4, y: 28.2, angle: 11 },
   { id: "chest", label: "Грудь", x: 45, y: 26.8, angle: 0 },
   { id: "side", label: "Бок", x: 33.5, y: 34, angle: -3 },
+  { id: "back", label: "Спина", only3d: true },
   { id: "thigh", label: "Бедро", x: 37, y: 52.5, angle: -5 },
   { id: "shin", label: "Голень", x: 37.4, y: 70.4, angle: -1 },
 ];
 const first = list[0];
 const start = places.find((p) => p.id === "thigh")!;
 ---
-<section class="section tryon" aria-labelledby="tryon-title" data-tryon>
+<section class="section tryon" id="primerka" aria-labelledby="tryon-title" data-tryon>
   <div class="container">
     <div class="section-head">
       <h2 id="tryon-title" class="ink-head">Примерка</h2>
@@ -40,6 +43,24 @@ const start = places.find((p) => p.id === "thigh")!;
           style={`--x: ${start.x}%; --y: ${start.y}%; --a: ${start.angle}deg; --cm: ${first.cm}`}>
         </div>
       </div>
+      <!-- 3D-сцена: до загрузки виден снимок той же сцены -->
+      <div class="tryon__stage" data-tryon-stage data-model={url("/assets/models/apollo.glb")} hidden data-overlap-ok>
+        <img class="tryon__poster" src={url("/assets/img/apollon-3d-poster.webp")} width="800" height="1000" alt="Гипсовый Аполлон Бельведерский с эскизом на бедре" loading="lazy" decoding="async">
+        <div class="tryon__view" data-tryon-view></div>
+        <div class="tryon__bar">
+          <div class="filter tryon__views" role="group" aria-label="Повернуть фигуру">
+            <button type="button" data-view="front" aria-pressed="true">Спереди</button>
+            <button type="button" data-view="side" aria-pressed="false">Сбоку</button>
+            <button type="button" data-view="back" aria-pressed="false">Сзади</button>
+          </div>
+          <button type="button" class="tryon__close" data-tryon-close aria-label="Закрыть примерку">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        <p class="tryon__hint">Тяните, чтобы повернуть. Рисунок можно двигать</p>
+        <p class="tryon__loading" data-tryon-loading aria-live="polite">Зажигаем свет…</p>
+        <button type="button" class="button tryon__open" data-tryon-open>Примерить в 3D</button>
+      </div>
       <div class="tryon__controls">
         <fieldset class="tryon__group">
           <legend class="label">Эскиз</legend>
@@ -47,7 +68,7 @@ const start = places.find((p) => p.id === "thigh")!;
             {list.map((s, i) => (
               <button type="button" class="tryon__sketch" aria-pressed={i === 0 ? "true" : "false"}
                 data-slug={s.slug} data-img={url(`/assets/img/${s.img}`)} data-cm={s.cm} data-name={s.name}>
-                <img src={url(`/assets/img/${s.img}`)} alt="" loading="lazy" decoding="async">
+                <img src={url(`/assets/img/mini/${s.img!.replace("-800.webp", "-200.webp")}`)} width="200" height="200" alt="" loading="lazy" decoding="async">
                 <span class="visually-hidden">{s.name}</span>
               </button>
             ))}
@@ -58,7 +79,8 @@ const start = places.find((p) => p.id === "thigh")!;
           <legend class="label">Место</legend>
           <div class="filter tryon__places">
             {places.map((p) => (
-              <button type="button" aria-pressed={p === start ? "true" : "false"} data-x={p.x} data-y={p.y} data-angle={p.angle}>{p.label}</button>
+              <button type="button" class:list={[p.only3d && "tryon__only3d"]} aria-pressed={p === start ? "true" : "false"}
+                data-place={p.id} data-x={p.x} data-y={p.y} data-angle={p.angle}>{p.label}</button>
             ))}
           </div>
         </fieldset>
@@ -71,3 +93,119 @@ const start = places.find((p) => p.id === "thigh")!;
     </div>
   </div>
 </section>
+
+<script>
+  // Оболочка 3D-примерки: проверяет WebGL, подгружает сцену (three.js и модель грузятся только здесь),
+  // связывает её с общими кнопками и на телефоне открывает примерку на весь экран.
+  const root = document.querySelector<HTMLElement>("[data-tryon]");
+  const gl = (() => {
+    try {
+      const c = document.createElement("canvas");
+      return !!(c.getContext("webgl2") || c.getContext("webgl"));
+    } catch { return false; }
+  })();
+  if (root && gl) {
+    const stage = root.querySelector<HTMLElement>("[data-tryon-stage]")!;
+    const view = root.querySelector<HTMLElement>("[data-tryon-view]")!;
+    const loadingOut = root.querySelector<HTMLElement>("[data-tryon-loading]")!;
+    const range = root.querySelector<HTMLInputElement>(".tryon__range")!;
+    const sketchBox = root.querySelector<HTMLElement>(".tryon__sketches")!;
+    const placeBox = root.querySelector<HTMLElement>(".tryon__places")!;
+    const viewBox = root.querySelector<HTMLElement>(".tryon__views")!;
+    const wide = matchMedia("(min-width: 62rem)");
+    root.classList.add("is-3d");
+    stage.hidden = false;
+
+    type App = Awaited<ReturnType<typeof import("../scripts/tryon3d.js").mount>>;
+    let app: App | null = null;
+    let loading: Promise<App | null> | null = null;
+    const pressed = (box: HTMLElement) => box.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
+    const press = (box: HTMLElement, b: HTMLButtonElement | null) => box.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+
+    const load = () => loading ??= import("../scripts/tryon3d.js")
+      .then((m) => m.mount(view, {
+        model: stage.dataset.model,
+        onProgress: (p: number) => { loadingOut.textContent = p > 0 && p < 1 ? `Зажигаем свет… ${Math.round(p * 100)} %` : "Зажигаем свет…"; },
+      }))
+      .then(async (a) => {
+        app = a;
+        (root as HTMLElement & { tryon3d?: App }).tryon3d = a; // для проверок из консоли
+        a.onMove = () => press(placeBox, null);
+        a.setPlace(pressed(placeBox)?.dataset.place || "thigh", { frame: false });
+        const s = pressed(sketchBox);
+        if (s) await a.setSketch(s.dataset.img!, Number(range.value) || Number(s.dataset.cm));
+        root.classList.add("is-ready");
+        return a;
+      })
+      .catch((err) => {
+        // сцена не поднялась: остаётся плоская примерка
+        console.error(err);
+        root.classList.remove("is-3d", "is-full");
+        stage.hidden = true;
+        return null;
+      });
+
+    sketchBox.addEventListener("click", (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
+      if (b && app) app.setSketch(b.dataset.img!, Number(b.dataset.cm));
+    });
+    placeBox.addEventListener("click", (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
+      if (!b) return;
+      press(placeBox, b);
+      press(viewBox, null);
+      app?.setPlace(b.dataset.place!);
+    });
+    range.addEventListener("input", () => app?.setSize(Number(range.value)));
+    viewBox.addEventListener("click", (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
+      if (!b) return;
+      press(viewBox, b);
+      app?.setView(b.dataset.view!);
+    });
+
+    // Телефон: примерка на весь экран. «Назад» в браузере закрывает её, а не уводит со страницы
+    const open = () => {
+      if (root.classList.contains("is-full")) return;
+      root.classList.add("is-full");
+      document.documentElement.classList.add("has-tryon");
+      history.pushState({ tryon: true }, "");
+      load().then((a) => a?.resize());
+      requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add("is-open")));
+      root.querySelector<HTMLElement>("[data-tryon-close]")?.focus({ preventScroll: true });
+    };
+    const close = () => {
+      if (!root.classList.contains("is-full")) return;
+      root.classList.remove("is-open");
+      setTimeout(() => {
+        root.classList.remove("is-full");
+        document.documentElement.classList.remove("has-tryon");
+        app?.resize();
+        root.querySelector<HTMLElement>("[data-tryon-open]")?.focus({ preventScroll: true });
+      }, 320);
+    };
+    root.querySelector("[data-tryon-open]")!.addEventListener("click", open);
+    root.querySelector("[data-tryon-close]")!.addEventListener("click", () => (history.state?.tryon ? history.back() : close()));
+    addEventListener("popstate", close);
+    addEventListener("keydown", (e) => { if (e.key === "Escape" && root.classList.contains("is-full")) history.state?.tryon ? history.back() : close(); });
+    wide.addEventListener("change", () => { if (wide.matches) { close(); load(); } });
+
+    // Компьютер: сцена грузится заранее, когда раздел подходит к экрану
+    new IntersectionObserver((entries, io) => {
+      if (entries[0].isIntersecting && wide.matches) { load(); io.disconnect(); }
+    }, { rootMargin: "600px 0px" }).observe(root);
+
+    // «Примерить» со страницы эскизов: /?primerka=<эскиз>#primerka. Ждём main.js, чтобы клик сменил эскиз и на гравюре
+    const want = new URLSearchParams(location.search).get("primerka");
+    const pick = () => {
+      const b = sketchBox.querySelector<HTMLButtonElement>(`[data-slug="${CSS.escape(want!)}"]`);
+      if (b && b.getAttribute("aria-pressed") !== "true") b.click();
+      if (!wide.matches) open();
+      else load();
+    };
+    if (want) {
+      if (document.readyState === "loading") addEventListener("DOMContentLoaded", pick, { once: true });
+      else pick();
+    }
+  }
+</script>
