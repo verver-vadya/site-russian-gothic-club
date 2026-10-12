@@ -1,0 +1,8 @@
+---
+// Логотип: название фрактурой (UnifrakturMaguntia, переведён в кривые) и подпись «тату-студия»
+import { wordmark, monogram } from "../data/wordmark";
+interface Props { variant?: "full" | "mono"; title?: string }
+const { variant = "full", title } = Astro.props;
+const m = variant === "mono" ? monogram : wordmark;
+---
+<svg class:list={["wordmark", `wordmark--${variant}`]} viewBox={m.viewBox} role={title ? "img" : undefined} aria-label={title} aria-hidden={title ? undefined : "true"}><path d={m.d} /></svg>

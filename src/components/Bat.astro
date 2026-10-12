@@ -1,0 +1,10 @@
+---
+// Летучая мышь с красной звездой (см. src/data/bat.ts)
+import { bat } from "../data/bat";
+interface Props { class?: string }
+const { class: cls } = Astro.props;
+---
+<svg class:list={["bat", cls]} viewBox={bat.viewBox} aria-hidden="true">
+  <path class="bat__body" fill-rule="evenodd" d={bat.body} />
+  <path class="bat__star" fill-rule="evenodd" d={bat.star} />
+</svg>

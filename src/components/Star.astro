@@ -1,0 +1,6 @@
+---
+// Четырёхлучевая звезда-разделитель, как над летучей мышью
+interface Props { class?: string }
+const { class: cls } = Astro.props;
+---
+<svg class:list={["star", cls]} viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c.4 6.4 1.6 7.6 8 8-6.4.4-7.6 1.6-8 8-.4-6.4-1.6-7.6-8-8 6.4-.4 7.6-1.6 8-8Z" transform="translate(0 4)"/></svg>
