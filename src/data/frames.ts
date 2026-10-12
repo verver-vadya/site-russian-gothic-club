@@ -27,5 +27,5 @@ export const singleFrames = {
 // Как выглядят рамы: "line" — белая линия прямо на тёмной стене, "sheet" — старый лист с рамой тёмными чернилами,
 // "wood" — три разные деревянные рамы, "gilt" / "black" / "ebony" — одна прямоугольная рама на все эскизы
 export type FrameLook = "line" | "sheet" | "wood" | keyof typeof singleFrames;
-export const frameLook: FrameLook = import.meta.env.FRAME_LOOK || "line";
+export const frameLook: FrameLook = import.meta.env.FRAME_LOOK || "ebony";
 export type FrameName = keyof typeof frames;
