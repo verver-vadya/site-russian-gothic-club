@@ -37,6 +37,7 @@
 - Взмах крыльев (`public/assets/data/bat-flap.json`): 58 кадров одного взмаха. Видео сделал verver в Hailuo AI из этой же мыши (бесплатный тариф, с водяным знаком), кадры обведены в кривые без знака. Заменяется вместе с мышью; для клиента видео делать на тарифе, который разрешает коммерческое использование.
 
 ## Шрифты (SIL Open Font License, файлы лицензий рядом со шрифтами)
-- Cormorant Garamond: заголовки (`src/fonts/`).
+- Ponomar (The Ponomar Project Authors, github.com/slavonic/ponomar): церковнославянский полуустав для крупных заголовков (`src/fonts/`).
+- Cormorant Garamond: подписи, кнопки, цены (`src/fonts/`).
 - Old Standard TT: основной текст (`src/fonts/`).
 - UnifrakturMaguntia: только логотип, переведён в кривые (`tools/wordmark.py`, лицензия `tools/OFL-UnifrakturMaguntia.txt`); сам шрифт сайт не загружает.
