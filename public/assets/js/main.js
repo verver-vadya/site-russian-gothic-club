@@ -54,15 +54,15 @@ flap.ready = flapSource
     }).catch(() => null)
   : Promise.resolve(null);
 flap.path2d = () => (flap.paths ||= flap.frames.map((d) => new Path2D(d)));
-// Кадры по фазе взмаха (1 = один полный взмах): текущий кадр, следующий и доля следующего. Следующий кадр проступает поверх текущего,
-// поэтому на замедлении крылья движутся плавно, а не ступеньками
-flap.mix = (phase) => {
-  const n = flap.frames.length, x = (((phase % 1) + 1) % 1) * n;
-  const i = Math.floor(x) % n;
-  return [i, (i + 1) % n, x - Math.floor(x)];
+// Номер кадра по фазе взмаха (1 = один полный взмах)
+flap.at = (phase) => Math.floor((((phase % 1) + 1) % 1) * flap.frames.length) % flap.frames.length;
+// Фаза за долю времени t из 0..1, если на n взмахов отведено ms миллисекунд. Взмахи замедляются к концу,
+// но не медленнее, чем в самом видео (полвзмаха в секунду, около 29 кадров в секунду): иначе кадры стоят подолгу
+// и крылья двигаются рывками. Последний взмах кончается ровно на кадре 0
+flap.settle = (t, n, ms) => {
+  const T = ms / 1000, end = Math.min(0.5, n / T), start = (2 * n) / T - end, s = t * T;
+  return start * s - ((start - end) * s * s) / (2 * T);
 };
-// Фаза за время t из 0..1: n взмахов, быстро в начале и плавно затихая к концу, ровно на кадре 0
-flap.settle = (t, n) => n * (1 - (1 - t) * (1 - t));
 
 if (hero) {
   const img = hero.querySelector(".hero__cathedral img");
@@ -123,7 +123,7 @@ if (hero) {
   const bat = hero.querySelector(".hero__bat");
   if (bat && !calm) {
     // Пока кадры не загрузились, мышь машет по-старому: рисунок сжимается и расправляется (CSS flap)
-    const [wings, next] = bat.querySelectorAll(".bat__flap");
+    const wings = bat.querySelector(".bat__flap");
     let playing = 0;
     const play = (n, ms) => {
       if (!flap.frames || !wings) {
@@ -134,14 +134,12 @@ if (hero) {
       }
       if (playing) return;
       const t0 = performance.now();
-      let last = -1, lastNext = -1;
+      let last = -1;
       bat.classList.add("is-live");
       const step = (now) => {
         const t = Math.min(1, (now - t0) / ms);
-        const [i, j, f] = t < 1 ? flap.mix(flap.settle(t, n)) : [0, 1, 0];
+        const i = t < 1 ? flap.at(flap.settle(t, n, ms)) : 0;
         if (i !== last) { wings.setAttribute("d", flap.frames[i]); last = i; }
-        if (j !== lastNext) { next.setAttribute("d", flap.frames[j]); lastNext = j; }
-        next.style.opacity = f.toFixed(3);
         if (t < 1) playing = requestAnimationFrame(step);
         else { playing = 0; bat.classList.remove("is-live"); }
       };
@@ -151,7 +149,6 @@ if (hero) {
       if (!f || !wings) return;
       const [k, x, y] = f.m;
       wings.setAttribute("transform", `matrix(${k} 0 0 ${k} ${x} ${y})`);
-      next.setAttribute("transform", `matrix(${k} 0 0 ${k} ${x} ${y})`);
       bat.classList.add("has-flap");
     });
     // Вылет из-за шпиля: три взмаха, последний затихает к посадке (CSS bat-in идёт 1800 мс с задержкой 1100 мс)
@@ -315,10 +312,10 @@ if (intro && introKind && hero) {
       const y = center.y + (home.y - center.y) * near + Math.sin(near * Math.PI) * H * 0.04;
       const w = home.w * depth;
       // Взмахи: четыре по пути, к посадке реже; затем один сильный взмах-порыв
-      let mix = [0, 1, 0];
+      let frame = 0;
       if (flap.frames) {
-        if (t < GUST[0]) mix = flap.mix(flap.settle(p, 4));
-        else if (t < GUST[1]) mix = flap.mix(smooth(span(t, GUST[0], GUST[1])));
+        if (t < GUST[0]) frame = flap.at(flap.settle(p, 4, FLY[1] - FLY[0]));
+        else if (t < GUST[1]) frame = flap.at(span(t, GUST[0], GUST[1]));
       }
       ctx.save();
       ctx.globalAlpha = Math.min(1, p * 5);
@@ -329,9 +326,7 @@ if (intro && introKind && hero) {
       if (flap.frames) {
         const [m, mx, my] = flap.m;
         ctx.transform(m, 0, 0, m, mx, my);
-        const [i, j, f] = mix, paths = flap.path2d();
-        ctx.fill(paths[i], "evenodd");
-        if (f > 0.01) { ctx.globalAlpha *= f; ctx.fill(paths[j], "evenodd"); }
+        ctx.fill(flap.path2d()[frame], "evenodd");
       } else {
         ctx.fill(bodyPath, "evenodd");
       }
@@ -384,10 +379,9 @@ if (intro && introKind && hero) {
   }
 }
 
-// Эскизы на главной: рама наклоняется к курсору, перевод проявляется чернилами при наведении.
-// На телефоне наведения нет, там чернила проступают, когда рама целиком попала на экран.
-document.querySelectorAll(".sketch").forEach((card) => {
-  if (!card.querySelector(".framed--stencil")) return;
+// Эскизы на главной: рама наклоняется к курсору. Если у рамы есть перевод (Framed stencil), он проявляется чернилами
+// при наведении, а на телефоне, где наведения нет, когда рама целиком попала на экран.
+document.querySelectorAll(".sketch[data-sketch-home]").forEach((card) => {
   if (finePointer && !calm) {
     const framed = card.querySelector(".framed");
     card.dataset.tilt = "";
@@ -404,7 +398,7 @@ document.querySelectorAll(".sketch").forEach((card) => {
       framed.style.setProperty("--rx", "0deg");
     });
   }
-  if (!finePointer && "IntersectionObserver" in window) {
+  if (card.querySelector(".framed--stencil") && !finePointer && "IntersectionObserver" in window) {
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) if (e.isIntersecting) { setTimeout(() => card.classList.add("is-inked"), 700); io.disconnect(); }
     }, { threshold: 0.85 });

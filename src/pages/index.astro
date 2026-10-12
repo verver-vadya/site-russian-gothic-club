@@ -65,8 +65,8 @@ import { url, rub } from "../lib/url";
       <ul class="sketch-list">
         {sketches.filter((s) => s.home).map((s) => (
           <li>
-            <a class="sketch" href={url(`/eskizy/#${s.slug}`)}>
-              <Framed frame={s.frame} land={s.land} img={s.img} bat={s.bat} alt={`Эскиз «${s.name}»`} taken={s.taken} stencil />
+            <a class="sketch" data-sketch-home href={url(`/eskizy/#${s.slug}`)}>
+              <Framed frame={s.frame} land={s.land} img={s.img} bat={s.bat} alt={`Эскиз «${s.name}»`} taken={s.taken} />
               <h3>{s.name}</h3>
               <p class="sketch__meta">{s.size} · {s.place}</p>
               <p class="sketch__price">{s.taken ? "Уже набит" : rub(s.price)}</p>
