@@ -1,0 +1,73 @@
+---
+// Примерка: свободный эскиз на гравюре Аполлона Бельведерского (А. Б. Дюран, 1825, Met, общественное достояние).
+// Масштаб по пропорциям: фигура от макушки до стоп занимает 83,5 % высоты листа и считается ростом 180 см.
+// Чернила видны только на коже (маска apollon-skin.png). Место задаёт центр (в % ширины и высоты листа) и наклон эскиза вдоль руки или ноги. Двигать эскиз можно мышью, пальцем и стрелками.
+import { sketches } from "../data/sketches";
+import { url } from "../lib/url";
+
+const picks = ["pes-so-strelami", "krasnaya-borzaya", "cerber", "grifon", "past", "voroniy-oval", "pavlinoglazka", "dve-borzye"];
+const list = picks
+  .map((slug) => sketches.find((s) => s.slug === slug && !s.taken && s.img))
+  .filter((s) => s !== undefined)
+  .map((s) => {
+    const [w, h] = s.size.match(/\d+/g)!.map(Number);
+    return { ...s, cm: Math.max(w, h) };
+  });
+const places = [
+  { id: "forearm", label: "Предплечье", x: 21, y: 38.7, angle: 41 },
+  { id: "shoulder", label: "Плечо", x: 28.4, y: 28.2, angle: 11 },
+  { id: "chest", label: "Грудь", x: 45, y: 26.8, angle: 0 },
+  { id: "side", label: "Бок", x: 33.5, y: 34, angle: -3 },
+  { id: "thigh", label: "Бедро", x: 37, y: 52.5, angle: -5 },
+  { id: "shin", label: "Голень", x: 37.4, y: 70.4, angle: -1 },
+];
+const first = list[0];
+const start = places.find((p) => p.id === "thigh")!;
+---
+<section class="section tryon" aria-labelledby="tryon-title" data-tryon>
+  <div class="container">
+    <div class="section-head">
+      <h2 id="tryon-title" class="ink-head">Примерка</h2>
+      <p class="muted">Выберите эскиз и место, подвиньте рисунок и подберите размер. Это прикидка по пропорциям: точный размер подгоним на консультации.</p>
+    </div>
+    <div class="tryon__grid">
+      <div class="tryon__sheet" data-overlap-ok>
+        <img class="tryon__figure" src={url("/assets/img/apollon-1000.webp")} width="1000" height="1419" alt="Гравюра со статуей Аполлона Бельведерского, на которую можно примерить эскиз" loading="lazy" decoding="async">
+        <!-- Чернила видны только на коже: маска повторяет тело без плаща, пня и постамента -->
+        <div class="tryon__skin" style={`--skin: url(${url("/assets/img/apollon-skin.png")})`}>
+        <img class="tryon__ink" src={url(`/assets/img/${first.img}`)} alt="" draggable="false" tabindex="0"
+          aria-label="Эскиз на фигуре: двигайте стрелками на клавиатуре"
+          style={`--x: ${start.x}%; --y: ${start.y}%; --a: ${start.angle}deg; --cm: ${first.cm}`}>
+        </div>
+      </div>
+      <div class="tryon__controls">
+        <fieldset class="tryon__group">
+          <legend class="label">Эскиз</legend>
+          <div class="tryon__sketches">
+            {list.map((s, i) => (
+              <button type="button" class="tryon__sketch" aria-pressed={i === 0 ? "true" : "false"}
+                data-slug={s.slug} data-img={url(`/assets/img/${s.img}`)} data-cm={s.cm} data-name={s.name}>
+                <img src={url(`/assets/img/${s.img}`)} alt="" loading="lazy" decoding="async">
+                <span class="visually-hidden">{s.name}</span>
+              </button>
+            ))}
+          </div>
+          <p class="tryon__name" aria-live="polite"><span data-tryon-name>{first.name}</span>, <span data-tryon-cm>{first.cm}</span> см</p>
+        </fieldset>
+        <fieldset class="tryon__group">
+          <legend class="label">Место</legend>
+          <div class="filter tryon__places">
+            {places.map((p) => (
+              <button type="button" aria-pressed={p === start ? "true" : "false"} data-x={p.x} data-y={p.y} data-angle={p.angle}>{p.label}</button>
+            ))}
+          </div>
+        </fieldset>
+        <div class="tryon__group">
+          <label class="label" for="tryon-size">Размер</label>
+          <input id="tryon-size" class="tryon__range" type="range" min="6" max="36" step="1" value={first.cm}>
+        </div>
+        <a class="button" data-tryon-book href={url(`/zapis/?eskiz=${first.slug}`)}>Записаться с этим эскизом</a>
+      </div>
+    </div>
+  </div>
+</section>

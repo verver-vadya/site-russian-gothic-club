@@ -169,16 +169,43 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
   -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 98%);
   mask-image: linear-gradient(to bottom, #000 55%, transparent 98%);
 }
-.hero__bat { position: absolute; left: 2%; top: calc(var(--header-h) + 3%); width: 40%; }
+/* Отступ от края: в размахе крылья на 18 % ширины рисунка шире влево и на 26 % вправо */
+.hero__bat { position: absolute; left: 7.5%; top: calc(var(--header-h) + 3%); width: 40%; }
 .bat__body { fill: var(--color-text); }
 .bat__star { fill: var(--color-blood); transform-box: view-box; transform-origin: 798px 447px; }
 .hero__lamp {
-  position: absolute; left: -1500px; top: -1500px; width: 3000px; height: 3000px; z-index: 1; pointer-events: none;
-  background: radial-gradient(circle at center, rgb(14 12 11 / 0) 0, rgb(14 12 11 / 0) 7%, rgb(14 12 11 / 0.5) 17%, rgb(14 12 11 / 0.66) 32%);
+  /* Вдвое шире и выше шапки, центр пятна в левом верхнем углу: куда бы ни ушёл курсор, тень закрывает всю шапку */
+  position: absolute; left: -100%; top: -100%; width: 200%; height: 200%; z-index: 1; pointer-events: none;
+  background: radial-gradient(circle at center, rgb(14 12 11 / 0) 0, rgb(14 12 11 / 0) 150px, rgb(14 12 11 / 0.5) 360px, rgb(14 12 11 / 0.66) 680px);
   opacity: 0; display: none;
 }
 .hero__lamp.is-live { display: block; }
+/* Туман у подножия собора: две полосы плывут в разные стороны, фонарь подсвечивает их вокруг курсора */
+.hero__fog { position: absolute; inset: auto 0 0; height: 62%; overflow: hidden; pointer-events: none; opacity: 0.5; }
+.hero__fog::before, .hero__fog::after {
+  content: ""; position: absolute; left: 0; bottom: 0; height: 100%; aspect-ratio: 5120 / 480;
+  background: var(--fog) repeat-x 0 0 / 25% 100%;
+  animation: fog-drift 140s linear infinite;
+}
+.hero__fog::after { height: 70%; opacity: 0.7; transform: scaleX(-1); animation-duration: 95s; animation-direction: reverse; }
+@keyframes fog-drift { to { translate: -25% 0; } }
+/* Мышь живая: при наведении и иногда сама взмахивает крыльями, по клику со звезды сыплются искры */
+.hero__bat { pointer-events: auto; cursor: pointer; }
+.hero__bat .bat__body { transform-box: view-box; transform-origin: 790px 700px; }
+.hero__bat.is-flapping .bat__body { animation: flap 900ms var(--ease-soft); }
+/* Живой взмах: кадры из видео (main.js). Пока они в ходу, неподвижный рисунок прячется; крылья в размахе шире рисунка */
+.hero__bat { overflow: visible; }
+.bat__flap { fill: var(--color-text); visibility: hidden; }
+.hero__bat.has-flap .bat__body { animation: none; }
+.hero__bat.is-live .bat__body { visibility: hidden; }
+.hero__bat.is-live .bat__flap { visibility: visible; }
+@keyframes flap { 0%, 100% { transform: none; } 20% { transform: scale(1.03, 0.72) translateY(14px); } 42% { transform: scale(0.98, 1.06) translateY(-10px); } 64% { transform: scale(1.02, 0.82) translateY(8px); } 82% { transform: scale(1, 1.02); } }
+.spark { position: absolute; z-index: 3; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; pointer-events: none; background: var(--color-blood-text); box-shadow: 0 0 8px 2px rgb(208 84 74 / 0.6); }
+.spark--bone { background: var(--color-text); box-shadow: 0 0 6px 1px rgb(236 228 214 / 0.5); }
 .hero__text { position: relative; z-index: 2; margin-top: -5.5rem; padding-bottom: var(--space-xl); }
+/* Блок текста шире самого текста: пропускаем курсор сквозь пустое место к летучей мыши */
+.hero__text { pointer-events: none; }
+.hero__text > * { pointer-events: auto; width: fit-content; }
 .hero__kicker { color: var(--color-muted); }
 .hero h1 { margin-block: var(--space-s) var(--space-m); }
 .hero h1 .wordmark { width: min(100%, 42rem); }
@@ -196,7 +223,7 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
     mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 62%, transparent 99%), linear-gradient(to right, transparent 0, #000 22%);
     mask-composite: intersect;
   }
-  .hero__bat { left: auto; right: 2.5%; top: calc(var(--header-h) + 1.5rem); width: min(22%, 26rem); }
+  .hero__bat { left: auto; right: max(2.5%, 6.5rem); top: calc(var(--header-h) + 1.5rem); width: min(22%, 26rem); }
   .hero__text { margin-top: 0; padding-block: calc(var(--header-h) + var(--space-l)) var(--space-l); }
   .hero h1 .wordmark { width: min(46vw, 46rem); }
 }
@@ -205,7 +232,19 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
 @media (scripting: enabled) {
   .hero__cathedral, .hero__bat, .hero__text > * { opacity: 0; }
   .hero.is-ready .hero__cathedral { animation: dark-in 2600ms var(--ease-dark) both; }
-  .hero.is-ready .hero__bat { animation: bat-in 1800ms var(--ease-dark) 1100ms both; }
+  .hero.is-ready .hero__bat { animation: bat-in 1800ms var(--ease-soft) 1100ms both; }
+  .hero.is-ready .hero__bat:not(.has-flap) .bat__body { animation: flap 600ms linear 1100ms 3; }
+  /* Логотип проступает красными чернилами и высыхает до цвета кости */
+  .hero.is-ready h1 .wordmark {
+    -webkit-mask: linear-gradient(90deg, #000 40%, transparent 60%) 100% 0 / 260% 100% no-repeat;
+    mask: linear-gradient(90deg, #000 40%, transparent 60%) 100% 0 / 260% 100% no-repeat;
+    animation: ink-in 2200ms var(--ease-soft) 300ms both;
+  }
+  /* После «Звезды» мышь не вылетает сама: она уже прилетела в заставке и сидит под звездой */
+  .hero.is-ready.from-intro .hero__bat { animation: none; opacity: 0; }
+  .hero.is-ready.from-intro .hero__bat .bat__body { animation: none; }
+  .hero.is-ready.from-intro.bat-landed .hero__bat { opacity: 1; transition: opacity 350ms ease; }
+  .hero.is-ready.from-intro .bat__star { animation: star-twinkle 5200ms ease-in-out 1500ms infinite; }
   .hero.is-ready .hero__lamp { opacity: 1; transition: opacity 2400ms var(--ease-dark) 600ms; }
   .hero.is-ready .hero__text > * { animation: rise-in 1100ms var(--ease-soft) both; }
   .hero.is-ready .hero__text > :nth-child(2) { animation-delay: 150ms; }
@@ -214,17 +253,34 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
   .hero.is-ready .bat__star { animation: star-flash 1100ms var(--ease-dark) 2300ms both, star-twinkle 5200ms ease-in-out 3400ms infinite; }
 }
 @keyframes dark-in { from { opacity: 0; transform: scale(1.035); } to { opacity: 1; transform: none; } }
-@keyframes bat-in { from { opacity: 0; transform: translateY(1.25rem) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes bat-in { 0% { opacity: 0; transform: translate(-38%, 46%) scale(0.32) rotate(-10deg); } 25% { opacity: 1; } 100% { opacity: 1; transform: none; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(0.75rem); } to { opacity: 1; transform: none; } }
 @keyframes star-flash { 0% { opacity: 0; transform: scale(0.3) rotate(-20deg); } 60% { opacity: 1; transform: scale(1.18) rotate(4deg); } 100% { opacity: 1; transform: none; } }
 @keyframes star-twinkle { 0%, 100% { opacity: 1; transform: none; } 45% { opacity: 0.7; transform: scale(0.9) rotate(-3deg); } 55% { opacity: 0.75; transform: scale(0.92) rotate(-2deg); } }
 @media (prefers-reduced-motion: reduce) {
   .hero.is-ready .hero__cathedral, .hero.is-ready .hero__bat, .hero.is-ready .hero__text > * { animation-name: fade-in; }
+  .hero.is-ready .hero__bat .bat__body, .hero.is-ready h1 .wordmark { animation: none; -webkit-mask: none; mask: none; }
+  .hero__fog::before, .hero__fog::after { animation: none; }
   .hero.is-ready .bat__star { animation: fade-in 900ms ease 1600ms both; }
 }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ink-in { 0% { -webkit-mask-position: 100% 0; mask-position: 100% 0; color: var(--color-blood-text); } 55% { color: var(--color-blood-text); } 100% { -webkit-mask-position: 0 0; mask-position: 0 0; color: var(--color-text); } }
 
 /* ---------- Заголовки разделов ---------- */
+/* Заголовок заливается чернилами по мере прокрутки: влажный красный край, за ним цвет кости.
+   Где прокрутка не управляет анимацией (Firefox), заголовок просто виден целиком */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .ink-head {
+      background: linear-gradient(90deg, var(--color-text) 0 40%, var(--color-blood-text) 46%, rgb(236 228 214 / 0.16) 54% 100%) 100% 0 / 250% 100% no-repeat;
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation-name: ink-fill; animation-timing-function: linear; animation-fill-mode: both;
+    }
+    /* Шкала прокрутки отдельным правилом: иначе сборщик склеивает её в сокращение animation, и браузер его отбрасывает */
+    h2.ink-head { animation-timeline: view(); animation-range: entry 15% cover 42%; }
+  }
+}
+@keyframes ink-fill { to { background-position: 0 0; } }
 .section-head { display: grid; gap: var(--space-s); margin-bottom: var(--space-l); padding-top: var(--space-m); border-top: 1px solid var(--color-line); }
 .section-head p { max-width: 58ch; }
 @media (min-width: 62rem) { .section-head { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; column-gap: var(--space-l); } }
@@ -264,8 +320,25 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
 .sketch :is(h2, h3) { margin-top: var(--space-s); text-align: center; font-size: clamp(1.375rem, 1rem + 1.4vw, 2.375rem); }
 .sketch__meta { color: var(--color-muted); font-size: var(--step--1); margin-top: var(--space-2xs); text-align: center; }
 .sketch__price { font-family: var(--font-display); font-weight: 600; font-size: var(--step-1); margin-top: var(--space-xs); text-align: center; }
+/* Перевод: фиолетовая копия эскиза лежит поверх чернильной; при наведении перевод гаснет, чернила проступают */
+img.framed__stencil { filter: url(#stencil); }
+.framed__stencil.framed__bat :is(.bat__body, .bat__star) { fill: #52297a; }
+.framed--stencil .framed__paper :is(.framed__ink, .framed__stencil, .framed__bat) { transition: opacity 900ms var(--ease-soft), transform var(--duration-soft) var(--ease-soft); }
+.framed--stencil .framed__paper > .framed__ink, .framed--stencil .framed__paper > .framed__bat:not(.framed__stencil) { opacity: 0; }
+.framed--stencil .framed__paper > .framed__stencil { position: absolute; inset: 0; box-sizing: border-box; width: 100%; height: 100%; padding: inherit; }
+.framed--stencil .framed__paper > img.framed__stencil { object-fit: contain; mix-blend-mode: multiply; }
+.sketch.is-inked .framed--stencil .framed__paper > :not(.framed__stencil) { opacity: 1; }
+.sketch.is-inked .framed--stencil .framed__paper > .framed__stencil { opacity: 0; }
 @media (hover: hover) {
-  .sketch:hover .framed { transform: translateY(-0.5rem) scale(1.015); }
+  .sketch:is(:hover, :focus-visible) .framed--stencil .framed__paper > :not(.framed__stencil) { opacity: 1; }
+  .sketch:is(:hover, :focus-visible) .framed--stencil .framed__paper > .framed__stencil { opacity: 0; transition-duration: 700ms; }
+}
+/* Рама наклоняется к курсору: углы считает main.js, здесь только перспектива */
+.sketch[data-tilt] .framed { transform: perspective(1100px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0)); }
+.sketch[data-tilt].is-tilting .framed { transition-duration: 160ms; }
+@media (hover: hover) {
+  .sketch[data-tilt]:hover .framed { --lift: -0.5rem; }
+  .sketch:not([data-tilt]):hover .framed { transform: translateY(-0.5rem) scale(1.015); }
   .sketch:hover .framed::before { opacity: 1; transform: scale(1.1); }
   .sketch:hover .framed__paper img, .sketch:hover .framed__bat { transform: scale(1.03); }
 }
@@ -328,3 +401,86 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
 .sketch__cta { margin-top: var(--space-xs); }
 .sketch-note { max-width: 42rem; margin-top: var(--space-xl); font-size: var(--step--1); }
 .section--flush { padding-top: 0; }
+
+/* ---------- Заставка при первом заходе (главная) ----------
+   Решение показывать принимает скрипт в <head>: data-intro="svecha" | "zvezda" на <html>. Клик, клавиша или прокрутка её пропускают */
+.intro { display: none; }
+[data-intro] .intro { display: block; position: fixed; inset: 0; z-index: 100; cursor: pointer; }
+[data-intro] { overflow: hidden; }
+[data-intro].intro-done { overflow: visible; }
+.intro.is-gone { opacity: 0; transition: opacity 500ms var(--ease-soft); pointer-events: none; }
+.intro__dark, .intro__sky { position: absolute; inset: 0; }
+.intro__flame { display: none; }
+
+/* «Свеча»: в темноте вспыхивает огонёк, круг тёплого света растёт и открывает сайт */
+[data-intro="svecha"] .intro__sky { display: none; }
+[data-intro="svecha"] .intro__dark {
+  --r: 0px;
+  background:
+    radial-gradient(circle at 50% 58%, rgb(255 176 96 / 0.16), transparent calc(var(--r) * 0.9)),
+    radial-gradient(circle at 50% 58%, transparent calc(var(--r) * 0.55), rgb(14 12 11 / 0.88) var(--r), var(--color-bg) calc(var(--r) * 1.35 + 2px));
+}
+[data-intro="svecha"] .intro__flame { display: block; position: absolute; left: 50%; top: 58%; width: 26px; height: 64px; margin: -56px 0 0 -13px; opacity: 0; }
+.intro__flame::before {
+  content: ""; position: absolute; inset: -60px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 190 110 / 0.35), rgb(255 140 60 / 0.08) 60%, transparent);
+  animation: glow 1700ms ease-in-out infinite alternate;
+}
+.intro__flame span {
+  position: absolute; inset: 0; border-radius: 50% 50% 45% 45% / 62% 62% 38% 38%;
+  background: radial-gradient(ellipse at 50% 78%, #fffbe8 0 18%, #ffd27a 34%, #f08a2c 62%, rgb(180 40 20 / 0.6) 82%, transparent 92%);
+  filter: blur(0.6px); transform-origin: 50% 90%;
+  animation: flicker 2200ms ease-in-out infinite;
+}
+.intro.is-lit .intro__flame { opacity: 1; transition: opacity 600ms var(--ease-soft); }
+.intro.is-open .intro__flame { opacity: 0; transition: opacity 900ms var(--ease-soft) 400ms; }
+@keyframes flicker {
+  0%, 100% { transform: scale(1, 1) skewX(0deg); }
+  18% { transform: scale(0.96, 1.06) skewX(2deg); }
+  35% { transform: scale(1.03, 0.95) skewX(-1.5deg); }
+  52% { transform: scale(0.98, 1.08) skewX(1deg); }
+  70% { transform: scale(1.02, 0.97) skewX(-2deg); }
+  86% { transform: scale(0.99, 1.04) skewX(0.5deg); }
+}
+@keyframes glow { from { opacity: 0.75; transform: scale(0.95); } to { opacity: 1; transform: scale(1.06); } }
+
+/* «Звезда»: темноту, звезду и мышь рисует холст (main.js). Пока он не нарисовал первый кадр, экран просто тёмный */
+[data-intro="zvezda"] .intro__dark { background: var(--color-bg); }
+[data-intro="zvezda"] .intro.is-drawn .intro__dark { display: none; }
+
+/* ---------- Примерка (главная) ---------- */
+.tryon__grid { display: grid; gap: var(--space-l); align-items: start; }
+@media (min-width: 62rem) { .tryon__grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); } }
+.tryon__sheet {
+  position: relative; overflow: hidden; max-width: 40rem; margin-inline: auto; width: 100%;
+  background: #e9e0cf; box-shadow: 0 1.5rem 3rem rgb(0 0 0 / 0.45), inset 0 0 3rem rgb(70 50 30 / 0.3);
+  touch-action: pan-y;
+}
+.tryon__figure { width: 100%; height: auto; mix-blend-mode: multiply; }
+.tryon__skin { position: absolute; inset: 0; -webkit-mask: var(--skin) 0 0 / 100% 100%; mask: var(--skin) 0 0 / 100% 100%; mix-blend-mode: multiply; }
+/* Эскиз ложится на «кожу» через multiply, как чернила; ширина в % листа, её считает main.js по размеру в сантиметрах */
+.tryon__ink {
+  position: absolute; left: var(--x); top: var(--y); width: calc(var(--w, 4) * 1%); max-width: none; height: auto;
+  transform: translate(-50%, -50%) rotate(var(--a)); mix-blend-mode: multiply; filter: saturate(1.25) contrast(1.1);
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-drag: none;
+  transition: left 650ms var(--ease-soft), top 650ms var(--ease-soft), width 300ms var(--ease-soft), transform 650ms var(--ease-soft), opacity 300ms ease;
+}
+.tryon__ink.is-dragging { cursor: grabbing; transition: width 300ms var(--ease-soft), opacity 300ms ease; }
+.tryon__ink.is-swapping { opacity: 0; }
+.tryon__ink:focus-visible { outline: 2px dashed var(--color-blood); outline-offset: 4px; }
+.tryon__controls { display: grid; gap: var(--space-l); align-content: start; }
+.tryon__group { border: 0; padding: 0; display: grid; gap: var(--space-s); min-width: 0; }
+.tryon__group .label { font-size: var(--step--1); color: var(--color-muted); }
+.tryon__sketches { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-xs); }
+.tryon__sketch {
+  aspect-ratio: 1; padding: 10%; cursor: pointer; background: #e9e0cf; border: 0;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15); transition: box-shadow var(--duration) ease, transform 120ms ease;
+}
+.tryon__sketch img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; }
+.tryon__sketch[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--color-blood), inset 0 0 0 4px rgb(243 236 224 / 0.6); }
+@media (hover: hover) { .tryon__sketch:hover { box-shadow: inset 0 0 0 2px var(--color-text); } .tryon__sketch[aria-pressed="true"]:hover { box-shadow: inset 0 0 0 3px var(--color-blood), inset 0 0 0 4px rgb(243 236 224 / 0.6); } }
+.tryon__sketch:active { transform: scale(0.96); }
+.tryon__name { font-family: var(--font-display); font-weight: 600; font-size: var(--step-1); }
+.tryon__places { margin-bottom: 0; }
+.tryon__range { width: 100%; height: var(--tap); accent-color: var(--color-blood); cursor: pointer; }
+@media (scripting: none) { .tryon__controls fieldset, .tryon__controls .tryon__group { display: none; } }

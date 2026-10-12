@@ -4,17 +4,45 @@ import Logo from "../components/Logo.astro";
 import Bat from "../components/Bat.astro";
 import Star from "../components/Star.astro";
 import Framed from "../components/Framed.astro";
+import TryOn from "../components/TryOn.astro";
 import { site, styles } from "../data/site";
 import { sketches } from "../data/sketches";
 import { url, rub } from "../lib/url";
 ---
 <Base title="Russian Gothic Club — тату-студия гравюры и готики в Москве" description="Гравюра, blackwork, dark art и готический леттеринг. Свободные эскизы и рисунок под вас. Москва, Китай-город." overHero>
+  <Fragment slot="head">
+    <!-- Заставка при первом заходе за визит. Решаем до отрисовки, чтобы сайт не мелькнул под ней.
+         По умолчанию «Звезда». ?intro=zvezda или ?intro=svecha показывает вариант всегда, ?intro=net выключает -->
+    <script is:inline>
+      (function () {
+        try {
+          var q = new URLSearchParams(location.search).get("intro");
+          if (q === "net" || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+          if (!q && sessionStorage.getItem("rgc-intro")) return;
+          document.documentElement.dataset.intro = q === "svecha" ? "svecha" : "zvezda";
+        } catch (e) {}
+      })();
+    </script>
+  </Fragment>
+  <div class="intro" aria-hidden="true" data-overlap-ok>
+    <div class="intro__dark"></div>
+    <div class="intro__flame"><span></span></div>
+    <canvas class="intro__sky"></canvas>
+  </div>
+  <!-- Фиолетовый перевод эскиза, как у тату-мастера перед сеансом: тёмные линии становятся фиолетовыми, бумага остаётся белой -->
+  <svg class="visually-hidden" aria-hidden="true" focusable="false">
+    <filter id="stencil" color-interpolation-filters="sRGB">
+      <feComponentTransfer><feFuncR type="gamma" exponent="0.7" /><feFuncG type="gamma" exponent="0.7" /><feFuncB type="gamma" exponent="0.7" /></feComponentTransfer>
+      <feColorMatrix type="matrix" values="0.1446 0.4864 0.0491 0 0.32  0.1786 0.6008 0.0606 0 0.16  0.1148 0.3862 0.0390 0 0.46  0 0 0 1 0" />
+    </filter>
+  </svg>
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero__art" aria-hidden="true" data-overlap-ok>
       <picture class="hero__cathedral">
         <img src={url("/assets/img/cathedral-1120.webp")} srcset={`${url("/assets/img/cathedral-800.webp")} 800w, ${url("/assets/img/cathedral-1120.webp")} 1120w`} sizes="(min-width: 62rem) 52vw, 100vw" width="1120" height="1304" alt="" fetchpriority="high" decoding="async">
       </picture>
-      <Bat class="hero__bat" />
+      <div class="hero__fog" style={`--fog: url(${url("/assets/img/fog.webp")})`}></div>
+      <Bat class="hero__bat" flap={url("/assets/data/bat-flap.json")} />
       <div class="hero__lamp" data-home="0.84,0.22"></div>
     </div>
     <div class="container hero__text">
@@ -31,14 +59,14 @@ import { url, rub } from "../lib/url";
   <section class="section sketches" aria-labelledby="sketches-title">
     <div class="container">
       <div class="section-head">
-        <h2 id="sketches-title">Свободные эскизы</h2>
+        <h2 id="sketches-title" class="ink-head">Свободные эскизы</h2>
         <p class="muted">Готовые рисунки мастеров. Выбираете эскиз, мы подгоняем его под место на теле и больше никому его не бьём.</p>
       </div>
       <ul class="sketch-list">
         {sketches.filter((s) => s.home).map((s) => (
           <li>
             <a class="sketch" href={url(`/eskizy/#${s.slug}`)}>
-              <Framed frame={s.frame} land={s.land} img={s.img} bat={s.bat} alt={`Эскиз «${s.name}»`} taken={s.taken} />
+              <Framed frame={s.frame} land={s.land} img={s.img} bat={s.bat} alt={`Эскиз «${s.name}»`} taken={s.taken} stencil />
               <h3>{s.name}</h3>
               <p class="sketch__meta">{s.size} · {s.place}</p>
               <p class="sketch__price">{s.taken ? "Уже набит" : rub(s.price)}</p>
@@ -50,10 +78,12 @@ import { url, rub } from "../lib/url";
     </div>
   </section>
 
+  <TryOn />
+
   <section class="section styles" aria-labelledby="styles-title">
     <div class="container">
       <div class="section-head">
-        <h2 id="styles-title">В чём работаем</h2>
+        <h2 id="styles-title" class="ink-head">В чём работаем</h2>
       </div>
       <ol class="style-list">
         {styles.map((s, i) => (
@@ -72,7 +102,7 @@ import { url, rub } from "../lib/url";
   <section class="section visit" aria-labelledby="visit-title">
     <div class="container visit__inner">
       <Star class="visit__star" />
-      <h2 id="visit-title">Сначала консультация</h2>
+      <h2 id="visit-title" class="ink-head">Сначала консультация</h2>
       <p>Полчаса в студии или в Telegram: смотрим место, обсуждаем размер и сюжет, называем цену. Консультация бесплатная и ни к чему не обязывает.</p>
       <p class="muted">{site.address}. {site.metro}. {site.hours}.</p>
       <div class="hero__actions visit__actions">

@@ -3,8 +3,9 @@
 import { frames, woodFrames, singleFrames, ebonyLand, frameLook, type FrameName } from "../data/frames";
 import { url } from "../lib/url";
 import Bat from "./Bat.astro";
-interface Props { frame?: FrameName; land?: boolean; img?: string; bat?: boolean; alt: string; taken?: boolean }
-const { frame = "rococo", land = false, img, bat, alt, taken = false } = Astro.props;
+// stencil: сначала эскиз виден фиолетовым переводом, при наведении проявляется чернилами (главная)
+interface Props { frame?: FrameName; land?: boolean; img?: string; bat?: boolean; alt: string; taken?: boolean; stencil?: boolean }
+const { frame = "rococo", land = false, img, bat, alt, taken = false, stencil = false } = Astro.props;
 const wood = frameLook === "wood";
 const sheet = frameLook === "sheet";
 const single = frameLook in singleFrames ? singleFrames[frameLook as keyof typeof singleFrames] : null;
@@ -13,9 +14,10 @@ const [t, r, b, l] = f.opening;
 const src = sheet ? f.src.replace("-800", "-sheet-800") : f.src;
 const round = wood && woodFrames[frame].round;
 ---
-<div class:list={["framed", { "framed--sheet": sheet, "framed--wood": wood || single }]} style={`--ratio: ${f.width} / ${f.height}`}>
+<div class:list={["framed", { "framed--sheet": sheet, "framed--wood": wood || single, "framed--stencil": stencil }]} style={`--ratio: ${f.width} / ${f.height}`}>
   <div class:list={["framed__paper", { "framed__paper--round": round }]} style={`inset: ${t}% ${r}% ${b}% ${l}%`}>
-    {bat ? <Bat class="framed__bat" /> : <img src={url(`/assets/img/${img}`)} width="800" height="1000" alt={alt} loading="lazy" decoding="async">}
+    {bat ? <Bat class="framed__bat" /> : <img class="framed__ink" src={url(`/assets/img/${img}`)} width="800" height="1000" alt={alt} loading="lazy" decoding="async">}
+    {stencil && (bat ? <Bat class="framed__bat framed__stencil" /> : <img class="framed__stencil" src={url(`/assets/img/${img}`)} width="800" height="1000" alt="" loading="lazy" decoding="async">)}
   </div>
   <img class="framed__frame" src={url(`/assets/img/${src}`)} width={f.width} height={f.height} alt="" loading="lazy" decoding="async">
   {taken && <span class="stamp" data-overlap-ok>Занят</span>}
