@@ -1,8 +1,7 @@
 # Источники графики и шрифтов
 
 ## Гравюры (общественное достояние)
-- Кёльнский собор, хор: гравюра по рисунку для серии Уильяма Томблсона «Views of the Rhine», 1830-е. Wikimedia Commons, файл `Tombleson Cologne Cathedral.jpg`, Public domain. Инвертирована для первого экрана: `public/assets/img/cathedral-*.webp`; на светлой бумаге: `paper-cathedral-800.webp`.
-- Шарль Мерион, «Стрига (Вампир)», офорт, 1853. National Gallery of Art, Wikimedia Commons, файл `Charles Meryon, The Vampire, 1853.jpg`, Public domain. На светлой бумаге: `public/assets/img/paper-stryge-800.webp`.
+- Кёльнский собор, хор: гравюра по рисунку для серии Уильяма Томблсона «Views of the Rhine», 1830-е. Wikimedia Commons, файл `Tombleson Cologne Cathedral.jpg`, Public domain. Инвертирована для первого экрана: `public/assets/img/cathedral-*.webp`.
 
 ## Рамы для эскизов (The Metropolitan Museum of Art, Open Access, CC0)
 - «Design for a Frame», 1750–88, объект 335803: `frame-rococo-800.webp`.
@@ -21,12 +20,10 @@
 - temnova tattoo (Instagram [@bliiinpoliiin](https://www.instagram.com/bliiinpoliiin/)): `temnova-*-800.webp`, 8 эскизов. Используются в концепте с разрешения автора (договорился verver, 12.10.2026). Вырезаны из скриншотов постов, фон приведён к цвету бумаги. Для реального клиента нужно письменное разрешение и исходники.
 
 ## Эскизы из старых гравюр (The Metropolitan Museum of Art, Open Access, CC0)
-Переведены в одну краску (чёрную `#16110e` или красную `#b2121a`) на бумаге `#e9e0cf`, файлы `gr-*-800.webp`.
+Оставлен только сам рисунок: фон листа, края доски, монограммы и номера убраны. Одна краска (чёрная `#16110e` или красная `#b2121a`) на бумаге `#e9e0cf`, файлы `gr-*-800.webp`.
 - Чарльз Ландсир, экорше гончей, 1821, объект 421662: `gr-gonchaya-anatomiya`.
-- Вирджил Солис, борзая, 1549, объект 345072: `gr-borzaya-solis`.
-- Мартин Шонгауэр: святой Себастьян (360044) `gr-sebastian`, искушение святого Антония (336142) `gr-antoniy-demony`, грифон (336196) `gr-grifon`, Георгий и змей (367016) `gr-georgiy`.
-- Альбрехт Дюрер: герб с черепом, 1503 (336220) `gr-gerb-s-cherepom`; носорог, 1515 (356497) `gr-nosorog`.
-- Вацлав Холлар: мотыльки и бабочки, 1646 (361543, 361545) `gr-mertvaya-golova`, `gr-motylek`; герб смерти из «Пляски смерти» (361674) `gr-gerb-smerti`.
+- Мартин Шонгауэр, грифон, объект 336196: `gr-grifon`.
+- Вацлав Холлар, ночная бабочка, 1646, объект 361545: `gr-motylek`.
 - Блэкворк-орнаменты XVI–XVII веков: Клас Янс Виссхер (419990, 419989) `gr-polumesyacy`, `gr-oval-vorony`; Ханс де Булл (425404) `gr-podves`; Йонас Бентцен (424847) `gr-siluety`; Георг Арнольдт (424826) `gr-ornament-orly`.
 
 ## Временная графика
