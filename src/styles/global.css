@@ -182,15 +182,14 @@ a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px
 }
 .hero__lamp.is-live { display: block; }
 /* Туман у подножия собора: две полосы плывут в разные стороны, фонарь подсвечивает их вокруг курсора */
-/* Слой шире шапки, чтобы при сдвиге за курсором не открывались его боковые края; верх растворяется плавно */
-.hero__fog {
-  position: absolute; inset: auto -48px 0; height: 62%; overflow: hidden; pointer-events: none; opacity: 0.5;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 48%);
-  mask-image: linear-gradient(to bottom, transparent, #000 48%);
-}
+/* Слой шире шапки, чтобы при сдвиге за курсором не открывались его боковые края */
+.hero__fog { position: absolute; inset: auto -48px 0; height: 62%; overflow: hidden; pointer-events: none; opacity: 0.5; }
+/* Каждая полоса сверху растворяется сама: у текстуры облака упираются в верхний край и без этого выглядят обрезанными */
 .hero__fog::before, .hero__fog::after {
   content: ""; position: absolute; left: 0; bottom: 0; height: 100%; aspect-ratio: 5120 / 480;
   background: var(--fog) repeat-x 0 0 / 25% 100%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.35) 30%, #000 65%);
+  mask-image: linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.35) 30%, #000 65%);
   animation: fog-drift 140s linear infinite;
 }
 .hero__fog::after { height: 70%; opacity: 0.7; transform: scaleX(-1); animation-duration: 95s; animation-direction: reverse; }
