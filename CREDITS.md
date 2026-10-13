@@ -29,6 +29,11 @@
 ## Примерка (The Metropolitan Museum of Art, Open Access, CC0)
 - `apollon-1000.webp`: Asher Brown Durand, «Apollo Belvedere», 1825, гравюра. https://www.metmuseum.org/art/collection/search/394436. Обрезана по листу. Маска кожи `apollon-skin.png` нарисована по контуру фигуры.
 
+## 3D-примерка
+- `public/assets/models/antinoy.glb`: гипсовый слепок Антиноя Капитолийского, SMK (Statens Museum for Kunst, Копенгаген), Royal Cast Collection, инв. KAS824, открытый 3D-скан, Public Domain Mark. https://open.smk.dk/artwork/image/KAS824. Упрощён до 150 тыс. треугольников, поставлен прямо и отмасштабирован до роста 180 см. Анатомия в паху сглажена, швы слепка на шее, руке и голени заглажены, спереди добавлен свой фиговый лист. Сжат meshopt.
+- `antinoy-3d-poster.webp`: снимок той же сцены, показывается до загрузки.
+- Библиотеки three.js и three-mesh-bvh, лицензия MIT.
+
 ## Своя графика
 - `fog.webp`: туман, сгенерирован программно из шума, чужих материалов в нём нет.
 

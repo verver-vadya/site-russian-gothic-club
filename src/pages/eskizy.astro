@@ -24,7 +24,12 @@ const free = sketches.filter((s) => !s.taken).length;
               <p class="sketch__meta">{s.size} · {s.place}</p>
               {s.author && <p class="sketch__meta">Автор: <a href={authors[s.author].href} target="_blank" rel="noopener">{authors[s.author].name}</a></p>}
               <p class="sketch__price">{s.taken ? "Уже набит" : rub(s.price)}</p>
-              {!s.taken && <p class="sketch__cta"><a class="link-arrow" href={url(`/zapis/?eskiz=${s.slug}`)}>Забронировать</a></p>}
+              {!s.taken && (
+                <p class="sketch__cta">
+                  <a class="link-arrow" href={url(`/zapis/?eskiz=${s.slug}`)}>Забронировать</a>
+                  {s.img && <a class="link-arrow sketch__try" href={url(`/?primerka=${s.slug}#primerka`)}>Примерить</a>}
+                </p>
+              )}
             </div>
           </li>
         ))}

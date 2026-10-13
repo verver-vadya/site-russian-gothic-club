@@ -406,7 +406,7 @@ img.framed__stencil { filter: url(#stencil); }
 .is-hidden { display: none !important; }
 .sketch-list--all .sketch { text-align: center; }
 .sketch-list--all .sketch__meta a { color: inherit; }
-.sketch__cta { margin-top: var(--space-xs); }
+.sketch__cta { display: flex; flex-wrap: wrap; justify-content: center; column-gap: var(--space-m); margin-top: var(--space-xs); }
 .sketch-note { max-width: 42rem; margin-top: var(--space-xl); font-size: var(--step--1); }
 .section--flush { padding-top: 0; }
 
@@ -494,3 +494,87 @@ img.framed__stencil { filter: url(#stencil); }
 .tryon__places { margin-bottom: 0; }
 .tryon__range { width: 100%; height: var(--tap); accent-color: var(--color-blood); cursor: pointer; }
 @media (scripting: none) { .tryon__controls fieldset, .tryon__controls .tryon__group { display: none; } }
+/* 3D-примерка (src/scripts/tryon3d.js). Без WebGL класса is-3d нет, и остаётся гравюра */
+.tryon__only3d { display: none; }
+.tryon.is-3d .tryon__only3d { display: inline-block; }
+.tryon.is-3d .tryon__sheet { display: none; }
+.tryon__stage {
+  position: relative; overflow: hidden; width: 100%; max-width: 40rem; margin-inline: auto; aspect-ratio: 4 / 5;
+  background: radial-gradient(60% 55% at 50% 42%, rgb(255 196 131 / 0.10), transparent 70%), radial-gradient(40% 12% at 50% 96%, rgb(255 196 131 / 0.07), transparent 70%);
+  touch-action: pan-y;
+}
+.tryon__poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity 600ms var(--ease-soft); }
+.tryon__view { position: absolute; inset: 0; opacity: 0; transition: opacity 600ms var(--ease-soft); }
+.tryon__canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.tryon__view.is-dragging .tryon__canvas, .tryon__canvas:active { cursor: grabbing; }
+.tryon__view.is-over-sketch .tryon__canvas { cursor: move; }
+.tryon__bar { position: absolute; inset: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-xs); padding: var(--space-s); pointer-events: none; opacity: 0; transition: opacity 400ms var(--ease-soft); }
+.tryon__bar > * { pointer-events: auto; }
+.tryon__views { margin: 0; }
+.tryon__views button { background: rgb(14 12 11 / 0.6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.tryon__close {
+  display: none; place-items: center; width: var(--tap); height: var(--tap); flex: none; padding: 0; cursor: pointer;
+  color: var(--color-text); background: rgb(14 12 11 / 0.6); border: 1px solid var(--color-line-strong); border-radius: 50%;
+}
+.tryon__close svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.tryon__hint {
+  position: absolute; left: 50%; bottom: var(--space-s); width: max-content; max-width: calc(100% - 2 * var(--space-s)); margin: 0; padding: 0.4rem 0.9rem; transform: translateX(-50%);
+  text-align: center; font-size: var(--step--1); color: var(--color-muted); background: rgb(14 12 11 / 0.7); border-radius: 1rem;
+  pointer-events: none; opacity: 0; transition: opacity 400ms var(--ease-soft);
+}
+.tryon__loading { position: absolute; inset: auto 0 var(--space-m); margin: 0; text-align: center; font-size: var(--step--1); letter-spacing: 0.08em; color: var(--color-muted); opacity: 0; transition: opacity 400ms var(--ease-soft); }
+.tryon__open { position: absolute; left: 50%; bottom: var(--space-m); transform: translateX(-50%); white-space: nowrap; }
+.tryon__open:active { transform: translateX(-50%) scale(0.97); }
+.tryon.is-ready .tryon__view { opacity: 1; }
+
+/* Компьютер: сцена прямо в разделе */
+@media (min-width: 62rem) {
+  .tryon__stage { max-height: min(84vh, 52rem); aspect-ratio: 4 / 5; }
+  .tryon__open { display: none; }
+  .tryon.is-3d:not(.is-ready) .tryon__loading { opacity: 1; }
+  .tryon.is-ready .tryon__poster { opacity: 0; }
+  .tryon.is-ready .tryon__bar, .tryon.is-ready .tryon__stage:not(.is-touched) .tryon__hint { opacity: 1; }
+  .tryon.is-3d .tryon__sketches { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* Телефон: в разделе снимок и кнопка, сама примерка на весь экран */
+@media (max-width: 61.99rem) {
+  .tryon.is-3d:not(.is-full) .tryon__controls { display: none; }
+  .tryon.is-3d:not(.is-full) .tryon__view { display: none; }
+  .tryon.is-full .tryon__grid {
+    position: fixed; inset: 0; z-index: 50; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 0;
+    background: var(--color-bg); opacity: 0; transform: translateY(1.5rem);
+    transition: opacity 300ms var(--ease-soft), transform 300ms var(--ease-soft);
+  }
+  .tryon.is-full.is-open .tryon__grid { opacity: 1; transform: none; transition-duration: 480ms; transition-timing-function: var(--ease-out); }
+  .tryon.is-full .tryon__stage { max-width: none; height: 100%; aspect-ratio: auto; padding-top: env(safe-area-inset-top); }
+  .tryon.is-full .tryon__open { display: none; }
+  .tryon.is-full .tryon__bar { opacity: 1; padding-top: calc(var(--space-s) + env(safe-area-inset-top)); }
+  .tryon.is-full .tryon__close { display: grid; }
+  .tryon.is-full .tryon__views button { min-height: 2.5rem; padding-inline: 0.85rem; }
+  .tryon.is-full:not(.is-ready) .tryon__loading { opacity: 1; }
+  .tryon.is-full.is-ready .tryon__poster { opacity: 0; }
+  .tryon.is-full .tryon__hint { display: none; }
+  .tryon.is-full .tryon__controls {
+    gap: var(--space-s); padding: var(--space-s) var(--space-s) calc(var(--space-s) + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-line); background: var(--color-bg); overflow: hidden;
+  }
+  .tryon.is-full .tryon__group { gap: var(--space-xs); }
+  .tryon.is-full .tryon__group > .label, .tryon.is-full .tryon__group > legend { display: none; }
+  .tryon.is-full .tryon__sketches, .tryon.is-full .tryon__places {
+    display: flex; flex-wrap: nowrap; gap: var(--space-xs); overflow-x: auto; overscroll-behavior-x: contain;
+    margin-inline: calc(var(--space-s) * -1); padding-inline: var(--space-s); scrollbar-width: none;
+  }
+  .tryon.is-full .tryon__sketches::-webkit-scrollbar, .tryon.is-full .tryon__places::-webkit-scrollbar { display: none; }
+  /* у флекс-элемента проценты отступа считаются от всей ленты, поэтому отступ в rem */
+  .tryon.is-full .tryon__sketch { flex: none; width: 3.75rem; padding: 0.375rem; }
+  .tryon.is-full .tryon__places button { flex: none; }
+  .tryon.is-full .tryon__name { font-size: var(--step-0); }
+  .tryon.is-full .tryon__range { height: 2rem; }
+  .tryon.is-full .tryon__controls .button { min-height: var(--tap); }
+}
+html.has-tryon, html.has-tryon body { overflow: hidden; overscroll-behavior: none; }
+@media (prefers-reduced-motion: reduce) {
+  .tryon.is-full .tryon__grid { transform: none; }
+}
+

@@ -12,12 +12,13 @@ import { url, rub } from "../lib/url";
 <Base title="Russian Gothic Club — тату-студия гравюры и готики в Москве" description="Гравюра, blackwork, dark art и готический леттеринг. Свободные эскизы и рисунок под вас. Москва, Китай-город." overHero>
   <Fragment slot="head">
     <!-- Заставка при первом заходе за визит. Решаем до отрисовки, чтобы сайт не мелькнул под ней.
-         По умолчанию «Звезда». ?intro=zvezda или ?intro=svecha показывает вариант всегда, ?intro=net выключает -->
+         По умолчанию «Звезда». ?intro=zvezda или ?intro=svecha показывает вариант всегда, ?intro=net выключает.
+         Переход «Примерить» со страницы эскизов (?primerka=…) сразу ведёт к примерке, без заставки -->
     <script is:inline>
       (function () {
         try {
           var q = new URLSearchParams(location.search).get("intro");
-          if (q === "net" || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+          if (q === "net" || location.search.indexOf("primerka=") > -1 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
           if (!q && sessionStorage.getItem("rgc-intro")) return;
           document.documentElement.dataset.intro = q === "svecha" ? "svecha" : "zvezda";
         } catch (e) {}
