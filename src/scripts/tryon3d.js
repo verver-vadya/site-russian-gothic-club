@@ -1,6 +1,7 @@
-// 3D-примерка: гипсовый слепок Аполлона Бельведерского (3D-скан SMK, общественное достояние).
-// Эскиз ложится на кожу наклейкой (decal), которая повторяет изгибы тела. Модель облегчена до 100 тыс. треугольников,
+// 3D-примерка: гипсовый слепок Антиноя Капитолийского (3D-скан SMK, общественное достояние) с листом клевера спереди.
+// Эскиз ложится на кожу наклейкой (decal), которая повторяет изгибы тела. Модель облегчена до 150 тыс. треугольников,
 // единица сцены = 1 м, фигура от подошвы до макушки 1,8 м (так размер эскиза в сантиметрах совпадает с примеркой на гравюре).
+// Лист — отдельная деталь со своим цветом: рисунок на него не ложится.
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
@@ -13,26 +14,25 @@ THREE.Mesh.prototype.raycast = acceleratedRaycast;
 // Места: точка на теле (примерно, точную находит луч), с какой стороны бросать луч (yaw, рад),
 // наклон эскиза от вертикали в градусах (плюс — верх вправо) и откуда на это место смотреть.
 const PLACES = {
-  forearm: { at: [-0.46, 1.02, 0.13], ray: -0.3, angle: 13, view: -0.35 },
-  shoulder: { at: [-0.37, 1.37, 0.02], ray: -0.75, angle: 4, view: -0.7 },
-  chest: { at: [-0.22, 1.32, 0.15], ray: 0, angle: 0, view: -0.1 },
-  side: { at: [-0.26, 1.06, 0.05], ray: -0.55, angle: 0, view: -0.8 },
-  thigh: { at: [-0.22, 0.67, 0.08], ray: -0.15, angle: -5, view: -0.2 },
-  shin: { at: [-0.19, 0.29, 0.0], ray: -0.15, angle: 0, view: -0.2 },
-  back: { at: [-0.38, 1.3, -0.1], ray: Math.PI + 0.5, angle: 0, view: Math.PI + 0.45 },
+  forearm: { at: [-0.29, 0.95, 0.12], ray: -0.45, angle: 3, view: -0.5 },
+  shoulder: { at: [-0.225, 1.35, 0.06], ray: -0.85, angle: 0, view: -0.8 },
+  chest: { at: [-0.1, 1.3, 0.14], ray: 0, angle: 0, view: -0.1 },
+  side: { at: [-0.15, 1.12, 0.1], ray: -0.5, angle: 0, view: -0.55 },
+  thigh: { at: [-0.106, 0.6, 0.1], ray: -0.1, angle: -3, view: -0.2 },
+  shin: { at: [-0.116, 0.22, 0.0], ray: -0.1, angle: 0, view: -0.2 },
+  back: { at: [-0.15, 1.3, -0.12], ray: Math.PI + 0.35, angle: 0, view: Math.PI + 0.35 },
 };
-// Не кожа: постамент, пень со змеёй и плащ. Сюда чернила не ложатся, рисунок будто уходит под ткань
+// Не кожа: постамент, пень за правой ногой, кисти рук и голова. Сюда чернила не ложатся
 const notSkin = (x, y, z) =>
-  y < 0.02 ||
-  (x < -0.31 && y < 0.9) ||
-  (x > 0.1 && y > 0.5 && y < 1.3) ||
-  (z < -0.02 && x > -0.29 && y > 0.95 && y < 1.5) ||
-  (y > 1.42 && x > -0.3 && x < 0.2) ||
-  (x < -0.5 && y < 0.95) || x > 0.55; // кисти рук
+  y < 0.01 ||
+  (x < -0.04 && z < -0.12 && y < 0.97) ||
+  (x < -0.24 && y < 0.86) ||
+  (x > 0.235 && y < 0.95) ||
+  y > 1.57;
 export const VIEWS = { front: 0.12, side: -Math.PI / 2, back: Math.PI };
 
 const FOV = 30;
-const CENTER = new THREE.Vector3(0, 0.86, 0);
+const CENTER = new THREE.Vector3(0, 0.84, 0);
 const D_MIN = 0.9;
 const PAD = 1.06; // у картинок эскизов поля около 6 %
 
@@ -105,7 +105,7 @@ export async function mount(host, { model, onProgress } = {}) {
   // Модель
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   const gltf = await loader.loadAsync(model, (e) => onProgress?.(e.total ? e.loaded / e.total : 0));
-  const src = gltf.scene.getObjectByProperty("isMesh", true);
+  const src = gltf.scene.getObjectByName("statue") || gltf.scene.getObjectByProperty("isMesh", true);
   gltf.scene.updateMatrixWorld(true);
   // Квантованные координаты переводим в обычные метры, чтобы считать наклейки без поправок на масштаб узла
   const sp = src.geometry.attributes.position;
@@ -126,6 +126,15 @@ export async function mount(host, { model, onProgress } = {}) {
   const plaster = new THREE.MeshStandardMaterial({ color: 0xe4ded4, roughness: 0.9, metalness: 0 });
   const statue = new THREE.Mesh(geometry, plaster);
   scene.add(statue);
+  // Лист клевера: отдельная деталь, луч и наклейки его не видят
+  const leafSrc = gltf.scene.getObjectByName("leaf");
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x6f8452, roughness: 0.7, metalness: 0 });
+  if (leafSrc) {
+    leafSrc.geometry.computeVertexNormals();
+    const leaf = new THREE.Mesh(leafSrc.geometry, leafMaterial);
+    leaf.applyMatrix4(leafSrc.matrixWorld);
+    scene.add(leaf);
+  }
 
   // Центры и нормали треугольников: по ним быстро выбираем кусок тела под наклейкой
   const triCount = index.length / 3;
@@ -142,6 +151,19 @@ export async function mount(host, { model, onProgress } = {}) {
       skin[t] = notSkin(cen[t * 3], cen[t * 3 + 1], cen[t * 3 + 2]) ? 0 : 1;
     }
   }
+  // Какие треугольники сходятся в каждой вершине: наклейка растёт от точки по связной коже
+  // и не перескакивает с руки на бедро, которое оказалось рядом
+  const vertCount = pos.length / 3;
+  const vtStart = new Uint32Array(vertCount + 1);
+  for (let i = 0; i < index.length; i++) vtStart[index[i] + 1]++;
+  for (let i = 0; i < vertCount; i++) vtStart[i + 1] += vtStart[i];
+  const vtList = new Uint32Array(index.length);
+  {
+    const fill = vtStart.slice(0, vertCount);
+    for (let i = 0; i < index.length; i++) vtList[fill[index[i]]++] = (i / 3) | 0;
+  }
+  const mark = new Uint32Array(triCount);
+  let stamp = 0;
 
   // Камера: облёт вокруг цели. Чем ближе, тем сильнее цель смещается от центра фигуры к эскизу
   const cur = { yaw: VIEWS.front, pitch: 0.06, dist: 5 };
@@ -158,8 +180,8 @@ export async function mount(host, { model, onProgress } = {}) {
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     const t = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
-    // Вся фигура с постаментом: 2,05 м в высоту, 1,35 м в ширину (рука с плащом)
-    dMax = Math.max(1.02 / t, 0.72 / (t * camera.aspect)) * 1.04;
+    // Вся фигура с постаментом: 2 м в высоту, около 0,9 м в ширину с запасом на поворот
+    dMax = Math.max(1.0 / t, 0.46 / (t * camera.aspect)) * 1.04;
     if (goal.dist > dMax || !started) goal.dist = dMax;
     if (!started) cur.dist = dMax;
     invalidate();
@@ -211,12 +233,31 @@ export async function mount(host, { model, onProgress } = {}) {
     // Кусок тела: треугольники рядом с точкой, повёрнутые к наклейке (чтобы рисунок не прошёл насквозь руку или ногу)
     const r2 = (Math.hypot(w, h) / 2 + 0.02) ** 2;
     const px = decal.point.x, py = decal.point.y, pz = decal.point.z;
-    const list = [];
+    stamp++;
+    let seed = -1, best = Infinity;
     for (let t = 0; t < triCount; t++) {
       const dx = cen[t * 3] - px, dy = cen[t * 3 + 1] - py, dz = cen[t * 3 + 2] - pz;
-      if (!skin[t] || dx * dx + dy * dy + dz * dz > r2) continue;
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (!skin[t] || d2 > r2) continue;
       if (fno[t * 3] * az.x + fno[t * 3 + 1] * az.y + fno[t * 3 + 2] * az.z < 0.12) continue;
-      list.push(t);
+      mark[t] = stamp;
+      if (d2 < best) { best = d2; seed = t; }
+    }
+    // от ближайшего к точке треугольника по соседям
+    const list = [];
+    if (seed >= 0) {
+      mark[seed] = 0;
+      list.push(seed);
+      for (let q = 0; q < list.length; q++) {
+        const t = list[q];
+        for (let j = 0; j < 3; j++) {
+          const vi = index[t * 3 + j];
+          for (let k = vtStart[vi]; k < vtStart[vi + 1]; k++) {
+            const u = vtList[k];
+            if (mark[u] === stamp) { mark[u] = 0; list.push(u); }
+          }
+        }
+      }
     }
     const sub = new Float32Array(list.length * 9);
     const subN = new Float32Array(list.length * 9);
@@ -479,7 +520,7 @@ export async function mount(host, { model, onProgress } = {}) {
     },
     dispose() {
       cancelAnimationFrame(raf); ro.disconnect(); io.disconnect();
-      geometry.disposeBoundsTree?.(); geometry.dispose(); plaster.dispose(); decalMaterial.dispose();
+      geometry.disposeBoundsTree?.(); geometry.dispose(); plaster.dispose(); decalMaterial.dispose(); leafMaterial.dispose(); leafSrc?.geometry.dispose();
       decal.texture?.dispose(); decal.mesh?.geometry.dispose(); renderer.dispose(); canvas.remove();
     },
   };

@@ -1,5 +1,5 @@
 ---
-// Примерка. Основной вид — 3D: гипсовый слепок Аполлона Бельведерского (скан SMK, общественное достояние), эскиз ложится на кожу
+// Примерка. Основной вид — 3D: гипсовый слепок Антиноя Капитолийского (скан SMK, общественное достояние) с листом клевера, эскиз ложится на кожу
 // наклейкой (src/scripts/tryon3d.js). На компьютере 3D стоит прямо в разделе, на телефоне открывается на весь экран по кнопке.
 // Без WebGL остаётся плоская примерка на гравюре Аполлона (А. Б. Дюран, 1825, Met, общественное достояние):
 // фигура от макушки до стоп занимает 83,5 % высоты листа и считается ростом 180 см, чернила видны только на коже (маска apollon-skin.png).
@@ -44,8 +44,8 @@ const start = places.find((p) => p.id === "thigh")!;
         </div>
       </div>
       <!-- 3D-сцена: до загрузки виден снимок той же сцены -->
-      <div class="tryon__stage" data-tryon-stage data-model={url("/assets/models/apollo.glb")} hidden data-overlap-ok>
-        <img class="tryon__poster" src={url("/assets/img/apollon-3d-poster.webp")} width="800" height="1000" alt="Гипсовый Аполлон Бельведерский с эскизом на бедре" loading="lazy" decoding="async">
+      <div class="tryon__stage" data-tryon-stage data-model={url("/assets/models/antinoy.glb")} hidden data-overlap-ok>
+        <img class="tryon__poster" src={url("/assets/img/antinoy-3d-poster.webp")} width="800" height="1000" alt="Гипсовый Антиной с эскизом на бедре" loading="lazy" decoding="async">
         <div class="tryon__view" data-tryon-view></div>
         <div class="tryon__bar">
           <div class="filter tryon__views" role="group" aria-label="Повернуть фигуру">
