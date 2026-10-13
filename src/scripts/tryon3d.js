@@ -1,7 +1,7 @@
-// 3D-примерка: гипсовый слепок Антиноя Капитолийского (3D-скан SMK, общественное достояние) с листом клевера спереди.
+// 3D-примерка: гипсовый слепок Антиноя Капитолийского (3D-скан SMK, общественное достояние) с фиговым листом спереди.
 // Эскиз ложится на кожу наклейкой (decal), которая повторяет изгибы тела. Модель облегчена до 150 тыс. треугольников,
 // единица сцены = 1 м, фигура от подошвы до макушки 1,8 м (так размер эскиза в сантиметрах совпадает с примеркой на гравюре).
-// Лист — отдельная деталь со своим цветом: рисунок на него не ложится.
+// Лист — отдельная деталь из того же гипса: рисунок на него не ложится.
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
@@ -126,12 +126,11 @@ export async function mount(host, { model, onProgress } = {}) {
   const plaster = new THREE.MeshStandardMaterial({ color: 0xe4ded4, roughness: 0.9, metalness: 0 });
   const statue = new THREE.Mesh(geometry, plaster);
   scene.add(statue);
-  // Лист клевера: отдельная деталь, луч и наклейки его не видят
+  // Фиговый лист: отдельная деталь, луч и наклейки его не видят
   const leafSrc = gltf.scene.getObjectByName("leaf");
-  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x6f8452, roughness: 0.7, metalness: 0 });
   if (leafSrc) {
     leafSrc.geometry.computeVertexNormals();
-    const leaf = new THREE.Mesh(leafSrc.geometry, leafMaterial);
+    const leaf = new THREE.Mesh(leafSrc.geometry, plaster);
     leaf.applyMatrix4(leafSrc.matrixWorld);
     scene.add(leaf);
   }
@@ -520,7 +519,7 @@ export async function mount(host, { model, onProgress } = {}) {
     },
     dispose() {
       cancelAnimationFrame(raf); ro.disconnect(); io.disconnect();
-      geometry.disposeBoundsTree?.(); geometry.dispose(); plaster.dispose(); decalMaterial.dispose(); leafMaterial.dispose(); leafSrc?.geometry.dispose();
+      geometry.disposeBoundsTree?.(); geometry.dispose(); plaster.dispose(); decalMaterial.dispose(); leafSrc?.geometry.dispose();
       decal.texture?.dispose(); decal.mesh?.geometry.dispose(); renderer.dispose(); canvas.remove();
     },
   };
