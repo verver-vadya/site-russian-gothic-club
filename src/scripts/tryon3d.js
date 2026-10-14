@@ -29,7 +29,7 @@ const notSkin = (x, y, z) =>
   (x < -0.24 && y < 0.86) ||
   (x > 0.235 && y < 0.95) ||
   y > 1.57;
-export const VIEWS = { front: 0.12, side: -Math.PI / 2, back: Math.PI };
+const FRONT = 0.12; // фигура чуть повёрнута, так объёмнее
 
 const FOV = 30;
 const CENTER = new THREE.Vector3(0, 0.84, 0);
@@ -165,11 +165,21 @@ export async function mount(host, { model, onProgress } = {}) {
   let stamp = 0;
 
   // Камера: облёт вокруг цели. Чем ближе, тем сильнее цель смещается от центра фигуры к эскизу
-  const cur = { yaw: VIEWS.front, pitch: 0.06, dist: 5 };
+  const cur = { yaw: FRONT, pitch: 0.06, dist: 5 };
   const goal = { ...cur };
   const focus = { cur: CENTER.clone(), goal: CENTER.clone() };
   let dMax = 5;
   let width = 1, height = 1;
+  // Снизу экран может закрывать панель (телефон): фигура и кадр считаются по свободной части
+  const inset = { cur: 0, goal: 0 };
+  const free = () => Math.max(0.35, 1 - inset.goal / height);
+  const fitMax = () => {
+    const t = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+    // Вся фигура с постаментом: 2 м в высоту, около 0,9 м в ширину с запасом на поворот
+    const was = dMax;
+    dMax = Math.max(1.0 / (t * free()), 0.46 / (t * camera.aspect)) * 1.04;
+    if (goal.dist >= was - 0.001 || goal.dist > dMax || !started) goal.dist = dMax;
+  };
   const lightGoal = new THREE.Vector2(-1.1, 0.9);
 
   const resize = () => {
@@ -178,10 +188,7 @@ export async function mount(host, { model, onProgress } = {}) {
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    const t = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
-    // Вся фигура с постаментом: 2 м в высоту, около 0,9 м в ширину с запасом на поворот
-    dMax = Math.max(1.0 / t, 0.46 / (t * camera.aspect)) * 1.04;
-    if (goal.dist > dMax || !started) goal.dist = dMax;
+    fitMax();
     if (!started) cur.dist = dMax;
     invalidate();
   };
@@ -201,7 +208,7 @@ export async function mount(host, { model, onProgress } = {}) {
 
   // Наклейка
   const decal = {
-    mesh: null, texture: null, ratio: 1, cm: 20, angle: 0,
+    mesh: null, texture: null, ratio: 1, cm: 20, turn: 0,
     point: new THREE.Vector3(), normal: new THREE.Vector3(0, 0, 1), up: new THREE.Vector3(0, 1, 0),
   };
   const decalMaterial = new THREE.MeshStandardMaterial({
@@ -227,6 +234,12 @@ export async function mount(host, { model, onProgress } = {}) {
     az.copy(decal.normal).normalize();
     ay.copy(decal.up).addScaledVector(az, -decal.up.dot(az)).normalize();
     ax.crossVectors(ay, az).normalize();
+    if (decal.turn) {
+      // поворот с ползунка: по часовой стрелке, если смотреть на рисунок
+      const a = THREE.MathUtils.degToRad(decal.turn);
+      ay.multiplyScalar(Math.cos(a)).addScaledVector(ax, Math.sin(a)).normalize();
+      ax.crossVectors(ay, az).normalize();
+    }
     basis.makeBasis(ax, ay, az);
     euler.setFromRotationMatrix(basis);
     // Кусок тела: треугольники рядом с точкой, повёрнутые к наклейке (чтобы рисунок не прошёл насквозь руку или ногу)
@@ -314,7 +327,7 @@ export async function mount(host, { model, onProgress } = {}) {
     const [w, h] = sizeOf();
     const t = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
     const need = Math.max(h * 3.4, (w * 3.4) / camera.aspect, 0.9);
-    goal.dist = THREE.MathUtils.clamp(need / (2 * t), D_MIN + 0.4, dMax * 0.7);
+    goal.dist = THREE.MathUtils.clamp(need / (2 * t * free()), D_MIN + 0.4, dMax * 0.7);
     focus.goal.copy(decal.point);
     if (yaw !== undefined) {
       // кратчайший поворот
@@ -359,12 +372,11 @@ export async function mount(host, { model, onProgress } = {}) {
     fadeTo(1, 420);
   }
   function setSize(cm) { decal.cm = cm; queueRebuild(); }
-  function setView(name) {
-    const yaw = VIEWS[name];
-    if (yaw === undefined) return;
-    let d = yaw - goal.yaw;
-    d = Math.atan2(Math.sin(d), Math.cos(d));
-    goal.yaw += d; goal.pitch = 0.06; goal.dist = dMax; focus.goal.copy(CENTER);
+  function setTurn(deg) { decal.turn = deg; queueRebuild(); }
+  // px снизу, закрытые панелью: картинка уезжает вверх в свободную часть
+  function setInset(px) {
+    inset.goal = Math.max(0, px);
+    fitMax();
     invalidate();
   }
 
@@ -470,7 +482,7 @@ export async function mount(host, { model, onProgress } = {}) {
   // Отрисовка только пока что-то движется и холст виден
   let raf = 0, last = 0, visible = true, started = false;
   const settled = () =>
-    Math.abs(goal.yaw - cur.yaw) < 1e-4 && Math.abs(goal.pitch - cur.pitch) < 1e-4 && Math.abs(goal.dist - cur.dist) < 1e-4 &&
+    Math.abs(goal.yaw - cur.yaw) < 1e-4 && Math.abs(inset.goal - inset.cur) < 0.5 && Math.abs(goal.pitch - cur.pitch) < 1e-4 && Math.abs(goal.dist - cur.dist) < 1e-4 &&
     focus.cur.distanceToSquared(focus.goal) < 1e-8 && lantern.position.x === lightGoal.x && lantern.position.y === lightGoal.y && !fade;
   function frame(now) {
     raf = 0;
@@ -481,6 +493,10 @@ export async function mount(host, { model, onProgress } = {}) {
     cur.pitch += (goal.pitch - cur.pitch) * k;
     cur.dist += (goal.dist - cur.dist) * damp(6, dt);
     focus.cur.lerp(focus.goal, damp(5, dt));
+    inset.cur += (inset.goal - inset.cur) * damp(8, dt);
+    if (Math.abs(inset.goal - inset.cur) < 0.5) inset.cur = inset.goal;
+    if (inset.cur) camera.setViewOffset(width, height, 0, inset.cur / 2, width, height);
+    else if (camera.view?.enabled) camera.clearViewOffset();
     const lk = damp(4, dt);
     lantern.position.x += (lightGoal.x - lantern.position.x) * lk;
     lantern.position.y += (lightGoal.y - lantern.position.y) * lk;
@@ -508,7 +524,7 @@ export async function mount(host, { model, onProgress } = {}) {
   placeCamera();
 
   const api = {
-    setSketch, setSize, setPlace, setView,
+    setSketch, setSize, setTurn, setPlace, setInset,
     get place() { return place; },
     onMove: null,
     resize,

@@ -48,11 +48,6 @@ const start = places.find((p) => p.id === "thigh")!;
         <img class="tryon__poster" src={url("/assets/img/antinoy-3d-poster.webp")} width="800" height="1000" alt="Гипсовый Антиной с эскизом на бедре" loading="lazy" decoding="async">
         <div class="tryon__view" data-tryon-view></div>
         <div class="tryon__bar">
-          <div class="filter tryon__views" role="group" aria-label="Повернуть фигуру">
-            <button type="button" data-view="front" aria-pressed="true">Спереди</button>
-            <button type="button" data-view="side" aria-pressed="false">Сбоку</button>
-            <button type="button" data-view="back" aria-pressed="false">Сзади</button>
-          </div>
           <button type="button" class="tryon__close" data-tryon-close aria-label="Закрыть примерку">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
@@ -61,7 +56,10 @@ const start = places.find((p) => p.id === "thigh")!;
         <p class="tryon__loading" data-tryon-loading aria-live="polite">Зажигаем свет…</p>
         <button type="button" class="button tryon__open" data-tryon-open>Примерить в 3D</button>
       </div>
-      <div class="tryon__controls">
+      <div class="tryon__controls" data-tryon-panel>
+        <!-- Телефон: панель можно убрать вниз, потянув или нажав на ручку -->
+        <button type="button" class="tryon__handle" data-tryon-handle aria-expanded="true" aria-label="Убрать панель вниз"><span aria-hidden="true"></span></button>
+        <span class="tryon__peek" aria-hidden="true"></span>
         <fieldset class="tryon__group">
           <legend class="label">Эскиз</legend>
           <div class="tryon__sketches">
@@ -84,9 +82,15 @@ const start = places.find((p) => p.id === "thigh")!;
             ))}
           </div>
         </fieldset>
-        <div class="tryon__group">
-          <label class="label" for="tryon-size">Размер</label>
-          <input id="tryon-size" class="tryon__range" type="range" min="6" max="36" step="1" value={first.cm}>
+        <div class="tryon__dials">
+          <div class="tryon__group">
+            <label class="label" for="tryon-size">Размер</label>
+            <input id="tryon-size" class="tryon__range" data-tryon-size type="range" min="6" max="36" step="1" value={first.cm}>
+          </div>
+          <div class="tryon__group">
+            <label class="label" for="tryon-turn">Поворот</label>
+            <input id="tryon-turn" class="tryon__range" data-tryon-turn type="range" min="-180" max="180" step="1" value="0">
+          </div>
         </div>
         <a class="button" data-tryon-book href={url(`/zapis/?eskiz=${first.slug}`)}>Записаться с этим эскизом</a>
       </div>
@@ -108,10 +112,12 @@ const start = places.find((p) => p.id === "thigh")!;
     const stage = root.querySelector<HTMLElement>("[data-tryon-stage]")!;
     const view = root.querySelector<HTMLElement>("[data-tryon-view]")!;
     const loadingOut = root.querySelector<HTMLElement>("[data-tryon-loading]")!;
-    const range = root.querySelector<HTMLInputElement>(".tryon__range")!;
+    const range = root.querySelector<HTMLInputElement>("[data-tryon-size]")!;
+    const turn = root.querySelector<HTMLInputElement>("[data-tryon-turn]")!;
+    const panel = root.querySelector<HTMLElement>("[data-tryon-panel]")!;
+    const handle = root.querySelector<HTMLButtonElement>("[data-tryon-handle]")!;
     const sketchBox = root.querySelector<HTMLElement>(".tryon__sketches")!;
     const placeBox = root.querySelector<HTMLElement>(".tryon__places")!;
-    const viewBox = root.querySelector<HTMLElement>(".tryon__views")!;
     const wide = matchMedia("(min-width: 62rem)");
     root.classList.add("is-3d");
     stage.hidden = false;
@@ -133,6 +139,8 @@ const start = places.find((p) => p.id === "thigh")!;
         a.onMove = () => press(placeBox, null);
         a.setPlace(pressed(placeBox)?.dataset.place || "thigh", { frame: false });
         const s = pressed(sketchBox);
+        a.setTurn(Math.abs(Number(turn.value)) <= 3 ? 0 : Number(turn.value));
+        syncInset();
         if (s) await a.setSketch(s.dataset.img!, Number(range.value) || Number(s.dataset.cm));
         root.classList.add("is-ready");
         return a;
@@ -153,16 +161,67 @@ const start = places.find((p) => p.id === "thigh")!;
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
       if (!b) return;
       press(placeBox, b);
-      press(viewBox, null);
       app?.setPlace(b.dataset.place!);
     });
     range.addEventListener("input", () => app?.setSize(Number(range.value)));
-    viewBox.addEventListener("click", (e) => {
-      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
-      if (!b) return;
-      press(viewBox, b);
-      app?.setView(b.dataset.view!);
+    // у нуля ползунок прилипает (то же делает main.js для гравюры)
+    turn.addEventListener("input", () => app?.setTurn(Math.abs(Number(turn.value)) <= 3 ? 0 : Number(turn.value)));
+
+    // Нижняя панель на телефоне: ручку можно потянуть вниз или вверх, касание сворачивает и разворачивает.
+    // Пока панель открыта, фигура сдвигается вверх в свободную часть экрана (setInset)
+    const peekBox = panel.querySelector<HTMLElement>(".tryon__peek")!;
+    const peek = () => peekBox.offsetHeight; // ручка и безопасная зона снизу
+    const syncInset = () => {
+      if (!app) return;
+      if (!root.classList.contains("is-full")) return app.setInset(0);
+      app.setInset(root.classList.contains("is-tucked") ? peek() : panel.offsetHeight);
+    };
+    const tuck = (on: boolean) => {
+      root.classList.toggle("is-tucked", on);
+      handle.setAttribute("aria-expanded", String(!on));
+      handle.setAttribute("aria-label", on ? "Показать панель" : "Убрать панель вниз");
+      panel.style.removeProperty("--pull");
+      syncInset();
+    };
+    let pull: { y: number; from: number; t: number; v: number } | null = null;
+    let pulled = false;
+    handle.addEventListener("pointerdown", (e) => {
+      if (!root.classList.contains("is-full")) return;
+      handle.setPointerCapture(e.pointerId);
+      const hidden = panel.offsetHeight - peek();
+      pull = { y: e.clientY, from: root.classList.contains("is-tucked") ? hidden : 0, t: e.timeStamp, v: 0 };
+      pulled = false;
     });
+    handle.addEventListener("pointermove", (e) => {
+      if (!pull) return;
+      const d = e.clientY - pull.y;
+      if (!pulled && Math.abs(d) < 6) return;
+      if (!pulled) root.classList.add("is-pulling");
+      pulled = true;
+      const hidden = panel.offsetHeight - peek();
+      const y = Math.min(hidden, Math.max(0, pull.from + d));
+      pull.v = (y - (parseFloat(panel.style.getPropertyValue("--pull")) || pull.from)) / Math.max(1, e.timeStamp - pull.t);
+      pull.t = e.timeStamp;
+      panel.style.setProperty("--pull", `${y}px`);
+    });
+    const letGo = () => {
+      if (!pull) return;
+      const p = pull;
+      pull = null;
+      root.classList.remove("is-pulling");
+      if (!pulled) return;
+      const hidden = panel.offsetHeight - peek();
+      const y = parseFloat(panel.style.getPropertyValue("--pull")) || 0;
+      // бросок решает скорость, медленное движение — середина пути
+      tuck(Math.abs(p.v) > 0.4 ? p.v > 0 : y > hidden / 2);
+    };
+    handle.addEventListener("pointerup", letGo);
+    handle.addEventListener("pointercancel", letGo);
+    handle.addEventListener("click", () => {
+      if (pulled) { pulled = false; return; }
+      tuck(!root.classList.contains("is-tucked"));
+    });
+    new ResizeObserver(syncInset).observe(panel);
 
     // Телефон: примерка на весь экран. «Назад» в браузере закрывает её, а не уводит со страницы
     const open = () => {
@@ -170,7 +229,8 @@ const start = places.find((p) => p.id === "thigh")!;
       root.classList.add("is-full");
       document.documentElement.classList.add("has-tryon");
       history.pushState({ tryon: true }, "");
-      load().then((a) => a?.resize());
+      tuck(false);
+      load().then((a) => { a?.resize(); syncInset(); });
       requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add("is-open")));
       root.querySelector<HTMLElement>("[data-tryon-close]")?.focus({ preventScroll: true });
     };
@@ -178,9 +238,10 @@ const start = places.find((p) => p.id === "thigh")!;
       if (!root.classList.contains("is-full")) return;
       root.classList.remove("is-open");
       setTimeout(() => {
-        root.classList.remove("is-full");
+        root.classList.remove("is-full", "is-tucked");
         document.documentElement.classList.remove("has-tryon");
         app?.resize();
+        syncInset();
         root.querySelector<HTMLElement>("[data-tryon-open]")?.focus({ preventScroll: true });
       }, 320);
     };

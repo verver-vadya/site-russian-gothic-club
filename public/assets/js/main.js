@@ -412,7 +412,8 @@ const tryon = document.querySelector("[data-tryon]");
 if (tryon) {
   const sheet = tryon.querySelector(".tryon__sheet");
   const ink = tryon.querySelector(".tryon__ink");
-  const range = tryon.querySelector(".tryon__range");
+  const range = tryon.querySelector("[data-tryon-size]");
+  const turn = tryon.querySelector("[data-tryon-turn]");
   const nameOut = tryon.querySelector("[data-tryon-name]");
   const cmOut = tryon.querySelector("[data-tryon-cm]");
   const book = tryon.querySelector("[data-tryon-book]");
@@ -425,6 +426,13 @@ if (tryon) {
   };
   if (ink.complete) fit(); else ink.addEventListener("load", fit, { once: true });
   range.addEventListener("input", () => { cm = Number(range.value); fit(); });
+  // Поворот добавляется к наклону места; у нуля ползунок прилипает, чтобы легко вернуть рисунок ровно
+  turn.addEventListener("input", () => {
+    if (Math.abs(Number(turn.value)) <= 3 && turn.value !== "0") turn.value = "0";
+    ink.style.setProperty("--turn", `${turn.value}deg`);
+    ink.classList.add("is-turning");
+  });
+  turn.addEventListener("change", () => ink.classList.remove("is-turning"));
 
   const press = (group, button) => group.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
   tryon.querySelector(".tryon__sketches").addEventListener("click", (e) => {

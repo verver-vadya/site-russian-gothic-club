@@ -471,11 +471,12 @@ img.framed__stencil { filter: url(#stencil); }
 /* Эскиз ложится на «кожу» через multiply, как чернила; ширина в % листа, её считает main.js по размеру в сантиметрах */
 .tryon__ink {
   position: absolute; left: var(--x); top: var(--y); width: calc(var(--w, 4) * 1%); max-width: none; height: auto;
-  transform: translate(-50%, -50%) rotate(var(--a)); mix-blend-mode: multiply; filter: saturate(1.25) contrast(1.1);
+  transform: translate(-50%, -50%) rotate(calc(var(--a) + var(--turn, 0deg))); mix-blend-mode: multiply; filter: saturate(1.25) contrast(1.1);
   cursor: grab; touch-action: none; user-select: none; -webkit-user-drag: none;
   transition: left 650ms var(--ease-soft), top 650ms var(--ease-soft), width 300ms var(--ease-soft), transform 650ms var(--ease-soft), opacity 300ms ease;
 }
-.tryon__ink.is-dragging { cursor: grabbing; transition: width 300ms var(--ease-soft), opacity 300ms ease; }
+.tryon__ink.is-dragging, .tryon__ink.is-turning { transition: width 300ms var(--ease-soft), opacity 300ms ease; }
+.tryon__ink.is-dragging { cursor: grabbing; }
 .tryon__ink.is-swapping { opacity: 0; }
 .tryon__ink:focus-visible { outline: 2px dashed var(--color-blood); outline-offset: 4px; }
 .tryon__controls { display: grid; gap: var(--space-l); align-content: start; }
@@ -493,6 +494,9 @@ img.framed__stencil { filter: url(#stencil); }
 .tryon__name { font-family: var(--font-display); font-weight: 600; font-size: var(--step-1); }
 .tryon__places { margin-bottom: 0; }
 .tryon__range { width: 100%; height: var(--tap); accent-color: var(--color-blood); cursor: pointer; }
+.tryon__dials { display: grid; gap: var(--space-l); }
+@media (min-width: 30rem) { .tryon__dials { grid-template-columns: 1fr 1fr; gap: var(--space-m); } }
+.tryon__handle, .tryon__peek { display: none; }
 @media (scripting: none) { .tryon__controls fieldset, .tryon__controls .tryon__group { display: none; } }
 /* 3D-примерка (src/scripts/tryon3d.js). Без WebGL класса is-3d нет, и остаётся гравюра */
 .tryon__only3d { display: none; }
@@ -508,10 +512,8 @@ img.framed__stencil { filter: url(#stencil); }
 .tryon__canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .tryon__view.is-dragging .tryon__canvas, .tryon__canvas:active { cursor: grabbing; }
 .tryon__view.is-over-sketch .tryon__canvas { cursor: move; }
-.tryon__bar { position: absolute; inset: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-xs); padding: var(--space-s); pointer-events: none; opacity: 0; transition: opacity 400ms var(--ease-soft); }
+.tryon__bar { position: absolute; inset: 0 0 auto; display: flex; align-items: flex-start; justify-content: flex-end; gap: var(--space-xs); padding: var(--space-s); pointer-events: none; opacity: 0; transition: opacity 400ms var(--ease-soft); }
 .tryon__bar > * { pointer-events: auto; }
-.tryon__views { margin: 0; }
-.tryon__views button { background: rgb(14 12 11 / 0.6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .tryon__close {
   display: none; place-items: center; width: var(--tap); height: var(--tap); flex: none; padding: 0; cursor: pointer;
   color: var(--color-text); background: rgb(14 12 11 / 0.6); border: 1px solid var(--color-line-strong); border-radius: 50%;
@@ -542,7 +544,7 @@ img.framed__stencil { filter: url(#stencil); }
   .tryon.is-3d:not(.is-full) .tryon__controls { display: none; }
   .tryon.is-3d:not(.is-full) .tryon__view { display: none; }
   .tryon.is-full .tryon__grid {
-    position: fixed; inset: 0; z-index: 50; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 0;
+    position: fixed; inset: 0; z-index: 50; display: grid; grid-template-rows: minmax(0, 1fr); gap: 0;
     background: var(--color-bg); opacity: 0; transform: translateY(1.5rem);
     transition: opacity 300ms var(--ease-soft), transform 300ms var(--ease-soft);
   }
@@ -551,14 +553,31 @@ img.framed__stencil { filter: url(#stencil); }
   .tryon.is-full .tryon__open { display: none; }
   .tryon.is-full .tryon__bar { opacity: 1; padding-top: calc(var(--space-s) + env(safe-area-inset-top)); }
   .tryon.is-full .tryon__close { display: grid; }
-  .tryon.is-full .tryon__views button { min-height: 2.5rem; padding-inline: 0.85rem; }
   .tryon.is-full:not(.is-ready) .tryon__loading { opacity: 1; }
+  .tryon.is-full .tryon__loading { inset: 42% 0 auto; }
   .tryon.is-full.is-ready .tryon__poster { opacity: 0; }
   .tryon.is-full .tryon__hint { display: none; }
+  /* Панель лежит поверх сцены и уезжает вниз до ручки. Открывается мягко и дольше, убирается быстрее */
   .tryon.is-full .tryon__controls {
-    gap: var(--space-s); padding: var(--space-s) var(--space-s) calc(var(--space-s) + env(safe-area-inset-bottom));
+    --peek: calc(2.75rem + env(safe-area-inset-bottom));
+    position: absolute; inset: auto 0 0; z-index: 2;
+    gap: var(--space-s); padding: 0 var(--space-s) calc(var(--space-s) + env(safe-area-inset-bottom));
     border-top: 1px solid var(--color-line); background: var(--color-bg); overflow: hidden;
+    transform: translateY(var(--pull, 0px)); transition: transform 500ms var(--ease-out);
   }
+  .tryon.is-full.is-tucked .tryon__controls { transform: translateY(var(--pull, calc(100% - var(--peek)))); transition-duration: 320ms; }
+  .tryon.is-full.is-pulling .tryon__controls { transition: none; }
+  .tryon.is-full .tryon__controls > :not(.tryon__handle) { transition: opacity 300ms var(--ease-soft) 120ms, visibility 0s; }
+  .tryon.is-full.is-tucked:not(.is-pulling) .tryon__controls > :not(.tryon__handle) { opacity: 0; visibility: hidden; transition: opacity 200ms var(--ease-soft), visibility 0s 200ms; }
+  .tryon.is-full .tryon__handle {
+    display: grid; place-items: center; height: 2.75rem; margin-inline: calc(var(--space-s) * -1); margin-bottom: calc(var(--space-s) * -1);
+    padding: 0; border: 0; background: none; cursor: grab; touch-action: none; -webkit-tap-highlight-color: transparent;
+  }
+  .tryon.is-full .tryon__handle span { width: 2.5rem; height: 4px; border-radius: 2px; background: var(--color-line-strong); transition: background-color 200ms ease, transform 200ms ease; }
+  .tryon.is-full .tryon__handle:active span { background: var(--color-muted); transform: scaleX(1.15); }
+  .tryon.is-full .tryon__peek { display: block; position: absolute; width: 0; height: var(--peek); visibility: hidden; }
+  .tryon.is-full .tryon__dials { grid-template-columns: 1fr 1fr; gap: var(--space-s); }
+  .tryon.is-full .tryon__dials .tryon__group > .label { display: block; font-size: var(--step--1); line-height: 1; }
   .tryon.is-full .tryon__group { gap: var(--space-xs); }
   .tryon.is-full .tryon__group > .label, .tryon.is-full .tryon__group > legend { display: none; }
   .tryon.is-full .tryon__sketches, .tryon.is-full .tryon__places {
