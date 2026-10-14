@@ -5,7 +5,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
-import { DecalGeometry } from "three/examples/jsm/geometries/DecalGeometry.js";
 import { computeBoundsTree, acceleratedRaycast } from "three-mesh-bvh";
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -22,14 +21,13 @@ const PLACES = {
   shin: { at: [-0.116, 0.22, 0.0], ray: -0.1, angle: 0, view: -0.2 },
   back: { at: [-0.15, 1.3, -0.12], ray: Math.PI + 0.35, angle: 0, view: Math.PI + 0.35 },
 };
-// Не кожа: постамент, пень за правой ногой, кисти рук и голова. Сюда чернила не ложатся
+// Не кожа: постамент, кисти рук и голова. Сюда чернила не ложатся
 const notSkin = (x, y, z) =>
   y < 0.01 ||
-  (x < -0.04 && z < -0.12 && y < 0.97) ||
   (x < -0.24 && y < 0.86) ||
   (x > 0.235 && y < 0.95) ||
   y > 1.57;
-export const VIEWS = { front: 0.12, side: -Math.PI / 2, back: Math.PI };
+const FRONT = 0.12; // фигура чуть повёрнута, так объёмнее
 
 const FOV = 30;
 const CENTER = new THREE.Vector3(0, 0.84, 0);
@@ -60,6 +58,7 @@ function inkTexture(img) {
     p[i + 3] = a * 255;
   }
   ctx.putImageData(d, 0, 0);
+  ctx.clearRect(0, 0, w, 1); ctx.clearRect(0, h - 1, w, 1); ctx.clearRect(0, 0, 1, h); ctx.clearRect(w - 1, 0, 1, h);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
@@ -161,15 +160,39 @@ export async function mount(host, { model, onProgress } = {}) {
     const fill = vtStart.slice(0, vertCount);
     for (let i = 0; i < index.length; i++) vtList[fill[index[i]]++] = (i / 3) | 0;
   }
-  const mark = new Uint32Array(triCount);
-  let stamp = 0;
+  // Соседи каждой вершины (через общие треугольники) и вершины, которые лежат на коже
+  const vvStart = new Uint32Array(vertCount + 1);
+  for (let i = 0; i < index.length; i++) vvStart[index[i] + 1] += 2;
+  for (let i = 0; i < vertCount; i++) vvStart[i + 1] += vvStart[i];
+  const vvList = new Uint32Array(index.length * 2);
+  const skinV = new Uint8Array(vertCount);
+  {
+    const fill = vvStart.slice(0, vertCount);
+    for (let t = 0; t < triCount; t++) {
+      const a = index[t * 3], b = index[t * 3 + 1], c = index[t * 3 + 2];
+      vvList[fill[a]++] = b; vvList[fill[a]++] = c;
+      vvList[fill[b]++] = c; vvList[fill[b]++] = a;
+      vvList[fill[c]++] = a; vvList[fill[c]++] = b;
+      if (skin[t]) skinV[a] = skinV[b] = skinV[c] = 1;
+    }
+  }
 
   // Камера: облёт вокруг цели. Чем ближе, тем сильнее цель смещается от центра фигуры к эскизу
-  const cur = { yaw: VIEWS.front, pitch: 0.06, dist: 5 };
+  const cur = { yaw: FRONT, pitch: 0.06, dist: 5 };
   const goal = { ...cur };
   const focus = { cur: CENTER.clone(), goal: CENTER.clone() };
   let dMax = 5;
   let width = 1, height = 1;
+  // Снизу экран может закрывать панель (телефон): фигура и кадр считаются по свободной части
+  const inset = { cur: 0, goal: 0 };
+  const free = () => Math.max(0.35, 1 - inset.goal / height);
+  const fitMax = () => {
+    const t = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+    // Вся фигура с постаментом: 2 м в высоту, около 0,9 м в ширину с запасом на поворот
+    const was = dMax;
+    dMax = Math.max(1.0 / (t * free()), 0.46 / (t * camera.aspect)) * 1.04;
+    if (goal.dist >= was - 0.001 || goal.dist > dMax || !started) goal.dist = dMax;
+  };
   const lightGoal = new THREE.Vector2(-1.1, 0.9);
 
   const resize = () => {
@@ -178,10 +201,7 @@ export async function mount(host, { model, onProgress } = {}) {
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    const t = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
-    // Вся фигура с постаментом: 2 м в высоту, около 0,9 м в ширину с запасом на поворот
-    dMax = Math.max(1.0 / t, 0.46 / (t * camera.aspect)) * 1.04;
-    if (goal.dist > dMax || !started) goal.dist = dMax;
+    fitMax();
     if (!started) cur.dist = dMax;
     invalidate();
   };
@@ -201,76 +221,189 @@ export async function mount(host, { model, onProgress } = {}) {
 
   // Наклейка
   const decal = {
-    mesh: null, texture: null, ratio: 1, cm: 20, angle: 0,
-    point: new THREE.Vector3(), normal: new THREE.Vector3(0, 0, 1), up: new THREE.Vector3(0, 1, 0),
+    mesh: null, texture: null, ratio: 1, cm: 20, turn: 0,
+    point: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0),
   };
   const decalMaterial = new THREE.MeshStandardMaterial({
     color: 0xc9c0b6, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, roughness: 0.85, metalness: 0, opacity: 0,
   });
-  const decalSize = new THREE.Vector3();
   const sizeOf = () => {
     const long = (decal.cm * PAD) / 100;
     return decal.ratio >= 1 ? [long, long / decal.ratio] : [long * decal.ratio, long];
   };
-  const basis = new THREE.Matrix4();
-  const euler = new THREE.Euler();
-  const ax = new THREE.Vector3(), ay = new THREE.Vector3(), az = new THREE.Vector3();
-  const patch = new THREE.BufferGeometry();
-  const patchMesh = new THREE.Mesh(patch);
-  patchMesh.updateMatrixWorld();
+  // Развёртка кожи вокруг точки (дискретная экспоненциальная карта, Schmidt и др., 2006): от точки расходимся
+  // по поверхности, как волна, и каждой вершине даём координаты на листе эскиза, перенося касательную рамку
+  // от соседа к соседу. Так рисунок обтекает руку или ногу без растяжений и обрывов, а не проецируется плоско.
+  const uvU = new Float32Array(vertCount), uvV = new Float32Array(vertCount), gd = new Float32Array(vertCount);
+  const fT1 = new Float32Array(vertCount * 3), fT2 = new Float32Array(vertCount * 3);
+  const vMark = new Uint32Array(vertCount); // stamp: вершина в очереди; stamp+1: готова
+  const mark = new Uint32Array(triCount);
+  let stamp = 0;
+  let heap = new Uint32Array(1024), heapD = new Float32Array(1024), heapN = 0;
+  const hPush = (v, d) => {
+    if (heapN === heap.length) {
+      const h2 = new Uint32Array(heap.length * 2); h2.set(heap); heap = h2;
+      const d2 = new Float32Array(heapD.length * 2); d2.set(heapD); heapD = d2;
+    }
+    let i = heapN++;
+    while (i > 0) {
+      const pI = (i - 1) >> 1;
+      if (heapD[pI] <= d) break;
+      heap[i] = heap[pI]; heapD[i] = heapD[pI]; i = pI;
+    }
+    heap[i] = v; heapD[i] = d;
+  };
+  const hPop = () => {
+    const top = heap[0];
+    const v = heap[--heapN], d = heapD[heapN];
+    let i = 0;
+    for (;;) {
+      let c = i * 2 + 1;
+      if (c >= heapN) break;
+      if (c + 1 < heapN && heapD[c + 1] < heapD[c]) c++;
+      if (heapD[c] >= d) break;
+      heap[i] = heap[c]; heapD[i] = heapD[c]; i = c;
+    }
+    heap[i] = v; heapD[i] = d;
+    return top;
+  };
+  // касательная рамка в вершине q, перенесённая из рамки (t1, t2) соседа: проекция на плоскость q
+  const frameAt = (q, t1x, t1y, t1z) => {
+    const nx = normal[q * 3], ny = normal[q * 3 + 1], nz = normal[q * 3 + 2];
+    const k = t1x * nx + t1y * ny + t1z * nz;
+    let ax_ = t1x - nx * k, ay_ = t1y - ny * k, az_ = t1z - nz * k;
+    const l = Math.hypot(ax_, ay_, az_) || 1;
+    ax_ /= l; ay_ /= l; az_ /= l;
+    fT1[q * 3] = ax_; fT1[q * 3 + 1] = ay_; fT1[q * 3 + 2] = az_;
+    // t2 = n × t1
+    fT2[q * 3] = ny * az_ - nz * ay_; fT2[q * 3 + 1] = nz * ax_ - nx * az_; fT2[q * 3 + 2] = nx * ay_ - ny * ax_;
+  };
+  const sn = new THREE.Vector3(), ax = new THREE.Vector3(), ay = new THREE.Vector3();
+  let decalGeo = null;
 
   function rebuild() {
     if (!decal.texture) return;
     const [w, h] = sizeOf();
-    const depth = Math.min(0.2, Math.max(w, h) * 0.7);
-    decalSize.set(w, h, depth);
-    az.copy(decal.normal).normalize();
-    ay.copy(decal.up).addScaledVector(az, -decal.up.dot(az)).normalize();
-    ax.crossVectors(ay, az).normalize();
-    basis.makeBasis(ax, ay, az);
-    euler.setFromRotationMatrix(basis);
-    // Кусок тела: треугольники рядом с точкой, повёрнутые к наклейке (чтобы рисунок не прошёл насквозь руку или ногу)
-    const r2 = (Math.hypot(w, h) / 2 + 0.02) ** 2;
+    const reach = Math.hypot(w, h) * 0.5 * 1.25 + 0.01;
     const px = decal.point.x, py = decal.point.y, pz = decal.point.z;
-    stamp++;
+    // ближайший к точке треугольник кожи
     let seed = -1, best = Infinity;
     for (let t = 0; t < triCount; t++) {
+      if (!skin[t]) continue;
       const dx = cen[t * 3] - px, dy = cen[t * 3 + 1] - py, dz = cen[t * 3 + 2] - pz;
       const d2 = dx * dx + dy * dy + dz * dz;
-      if (!skin[t] || d2 > r2) continue;
-      if (fno[t * 3] * az.x + fno[t * 3 + 1] * az.y + fno[t * 3 + 2] * az.z < 0.12) continue;
-      mark[t] = stamp;
       if (d2 < best) { best = d2; seed = t; }
     }
-    // от ближайшего к точке треугольника по соседям
-    const list = [];
-    if (seed >= 0) {
-      mark[seed] = 0;
-      list.push(seed);
-      for (let q = 0; q < list.length; q++) {
-        const t = list[q];
-        for (let j = 0; j < 3; j++) {
-          const vi = index[t * 3 + j];
-          for (let k = vtStart[vi]; k < vtStart[vi + 1]; k++) {
-            const u = vtList[k];
-            if (mark[u] === stamp) { mark[u] = 0; list.push(u); }
-          }
-        }
+    if (seed < 0) return;
+    // рамка в точке: нормаль кожи, «верх» рисунка по месту плюс поворот с ползунка (по часовой, если смотреть на рисунок)
+    sn.set(0, 0, 0);
+    for (let j = 0; j < 3; j++) { const vi = index[seed * 3 + j] * 3; sn.x += normal[vi]; sn.y += normal[vi + 1]; sn.z += normal[vi + 2]; }
+    sn.normalize();
+    ay.copy(decal.up).addScaledVector(sn, -decal.up.dot(sn)).normalize();
+    ax.crossVectors(ay, sn).normalize();
+    if (decal.turn) {
+      const a = THREE.MathUtils.degToRad(decal.turn);
+      ay.multiplyScalar(Math.cos(a)).addScaledVector(ax, Math.sin(a)).normalize();
+      ax.crossVectors(ay, sn).normalize();
+    }
+    stamp += 2;
+    const QUEUED = stamp, DONE = stamp + 1;
+    heapN = 0;
+    for (let j = 0; j < 3; j++) {
+      const q = index[seed * 3 + j];
+      const dx = pos[q * 3] - px, dy = pos[q * 3 + 1] - py, dz = pos[q * 3 + 2] - pz;
+      uvU[q] = dx * ax.x + dy * ax.y + dz * ax.z;
+      uvV[q] = dx * ay.x + dy * ay.y + dz * ay.z;
+      frameAt(q, ax.x, ax.y, ax.z);
+      gd[q] = Math.hypot(dx, dy, dz);
+      vMark[q] = DONE;
+    }
+    for (let j = 0; j < 3; j++) {
+      const q = index[seed * 3 + j];
+      for (let k = vvStart[q]; k < vvStart[q + 1]; k++) {
+        const r = vvList[k];
+        if (vMark[r] === DONE || !skinV[r]) continue;
+        const d = gd[q] + Math.hypot(pos[r * 3] - pos[q * 3], pos[r * 3 + 1] - pos[q * 3 + 1], pos[r * 3 + 2] - pos[q * 3 + 2]);
+        vMark[r] = QUEUED; hPush(r, d);
       }
     }
-    const sub = new Float32Array(list.length * 9);
-    const subN = new Float32Array(list.length * 9);
-    list.forEach((t, k) => {
+    const done = [index[seed * 3], index[seed * 3 + 1], index[seed * 3 + 2]];
+    while (heapN) {
+      const d0 = heapD[0];
+      const r = hPop();
+      if (vMark[r] === DONE) continue;
+      // координаты на листе: среднее по уже готовым соседям, каждый переносит своё ребро в свою рамку
+      let su = 0, sv = 0, sw = 0, parent = -1, pd = Infinity;
+      const rx = pos[r * 3], ry = pos[r * 3 + 1], rz = pos[r * 3 + 2];
+      for (let k = vvStart[r]; k < vvStart[r + 1]; k++) {
+        const p = vvList[k];
+        if (vMark[p] !== DONE) continue;
+        const dx = rx - pos[p * 3], dy = ry - pos[p * 3 + 1], dz = rz - pos[p * 3 + 2];
+        const len = Math.hypot(dx, dy, dz);
+        if (!len) continue;
+        const nx = normal[p * 3], ny = normal[p * 3 + 1], nz = normal[p * 3 + 2];
+        const kk = dx * nx + dy * ny + dz * nz;
+        const tx = dx - nx * kk, ty = dy - ny * kk, tz = dz - nz * kk;
+        const tl = Math.hypot(tx, ty, tz) || len;
+        const s_ = len / tl; // длина ребра сохраняется, кривизна не «съедает» расстояние
+        const u = uvU[p] + (tx * fT1[p * 3] + ty * fT1[p * 3 + 1] + tz * fT1[p * 3 + 2]) * s_;
+        const v = uvV[p] + (tx * fT2[p * 3] + ty * fT2[p * 3 + 1] + tz * fT2[p * 3 + 2]) * s_;
+        const wgt = 1 / (len + 1e-4);
+        su += u * wgt; sv += v * wgt; sw += wgt;
+        if (gd[p] + len < pd) { pd = gd[p] + len; parent = p; }
+      }
+      if (parent < 0) continue;
+      uvU[r] = su / sw; uvV[r] = sv / sw; gd[r] = Math.min(pd, d0);
+      frameAt(r, fT1[parent * 3], fT1[parent * 3 + 1], fT1[parent * 3 + 2]);
+      vMark[r] = DONE;
+      done.push(r);
+      if (gd[r] > reach) continue; // дальше не идём, но вершина готова для треугольников на краю
+      for (let k = vvStart[r]; k < vvStart[r + 1]; k++) {
+        const q = vvList[k];
+        if (vMark[q] === DONE || !skinV[q]) continue;
+        const d = gd[r] + Math.hypot(pos[q * 3] - rx, pos[q * 3 + 1] - ry, pos[q * 3 + 2] - rz);
+        vMark[q] = QUEUED; hPush(q, d);
+      }
+    }
+    // треугольники кожи, задевающие лист эскиза; на стыке двух волн (рисунок обошёл конечность) координаты рвутся — такие пропускаем
+    const hw = w / 2, hh = h / 2;
+    const tris = [];
+    for (const q of done) {
+      for (let k = vtStart[q]; k < vtStart[q + 1]; k++) {
+        const t = vtList[k];
+        if (!skin[t] || mark[t] === stamp) continue;
+        mark[t] = stamp;
+        const a = index[t * 3], b = index[t * 3 + 1], c = index[t * 3 + 2];
+        if (vMark[a] !== DONE || vMark[b] !== DONE || vMark[c] !== DONE) continue;
+        const u0 = Math.min(uvU[a], uvU[b], uvU[c]), u1 = Math.max(uvU[a], uvU[b], uvU[c]);
+        const v0 = Math.min(uvV[a], uvV[b], uvV[c]), v1 = Math.max(uvV[a], uvV[b], uvV[c]);
+        if (u1 < -hw || u0 > hw || v1 < -hh || v0 > hh) continue;
+        const e = Math.max(
+          Math.hypot(pos[a * 3] - pos[b * 3], pos[a * 3 + 1] - pos[b * 3 + 1], pos[a * 3 + 2] - pos[b * 3 + 2]),
+          Math.hypot(pos[b * 3] - pos[c * 3], pos[b * 3 + 1] - pos[c * 3 + 1], pos[b * 3 + 2] - pos[c * 3 + 2]),
+          Math.hypot(pos[c * 3] - pos[a * 3], pos[c * 3 + 1] - pos[a * 3 + 1], pos[c * 3 + 2] - pos[a * 3 + 2]),
+        );
+        if (Math.max(u1 - u0, v1 - v0) > e * 3 + 0.004) continue;
+        tris.push(t);
+      }
+    }
+    const P = new Float32Array(tris.length * 9), N = new Float32Array(tris.length * 9), UV = new Float32Array(tris.length * 6);
+    const LIFT = 0.0006; // чуть над кожей, чтобы не мерцало
+    tris.forEach((t, i) => {
       for (let j = 0; j < 3; j++) {
-        const vi = index[t * 3 + j] * 3;
-        sub[k * 9 + j * 3] = pos[vi]; sub[k * 9 + j * 3 + 1] = pos[vi + 1]; sub[k * 9 + j * 3 + 2] = pos[vi + 2];
-        subN[k * 9 + j * 3] = normal[vi]; subN[k * 9 + j * 3 + 1] = normal[vi + 1]; subN[k * 9 + j * 3 + 2] = normal[vi + 2];
+        const q = index[t * 3 + j], o = i * 9 + j * 3;
+        N[o] = normal[q * 3]; N[o + 1] = normal[q * 3 + 1]; N[o + 2] = normal[q * 3 + 2];
+        P[o] = pos[q * 3] + N[o] * LIFT; P[o + 1] = pos[q * 3 + 1] + N[o + 1] * LIFT; P[o + 2] = pos[q * 3 + 2] + N[o + 2] * LIFT;
+        UV[i * 6 + j * 2] = uvU[q] / w + 0.5; UV[i * 6 + j * 2 + 1] = uvV[q] / h + 0.5;
       }
     });
-    patch.setAttribute("position", new THREE.BufferAttribute(sub, 3));
-    patch.setAttribute("normal", new THREE.BufferAttribute(subN, 3));
-    const g = new DecalGeometry(patchMesh, decal.point, euler, decalSize);
-    if (decal.mesh) { decal.mesh.geometry.dispose(); decal.mesh.geometry = g; }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(P, 3));
+    g.setAttribute("normal", new THREE.BufferAttribute(N, 3));
+    g.setAttribute("uv", new THREE.BufferAttribute(UV, 2));
+    decalGeo?.dispose();
+    decalGeo = g;
+    if (decal.mesh) decal.mesh.geometry = g;
     else { decal.mesh = new THREE.Mesh(g, decalMaterial); decal.mesh.renderOrder = 1; scene.add(decal.mesh); }
     invalidate();
   }
@@ -301,8 +434,6 @@ export async function mount(host, { model, onProgress } = {}) {
     const hit = raycaster.intersectObject(statue, false)[0];
     return hit ? { ...hitInfo(hit), dir: raycaster.ray.direction.clone() } : null;
   };
-  // Направление проекции: нормаль тела, чуть подтянутая к взгляду, чтобы на изгибах рисунок не съезжал вбок
-  const projNormal = (n, viewDir) => n.clone().multiplyScalar(0.65).addScaledVector(viewDir, -0.35).normalize();
 
   const upFromAngle = (yaw, deg) => {
     const a = THREE.MathUtils.degToRad(deg);
@@ -314,7 +445,7 @@ export async function mount(host, { model, onProgress } = {}) {
     const [w, h] = sizeOf();
     const t = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
     const need = Math.max(h * 3.4, (w * 3.4) / camera.aspect, 0.9);
-    goal.dist = THREE.MathUtils.clamp(need / (2 * t), D_MIN + 0.4, dMax * 0.7);
+    goal.dist = THREE.MathUtils.clamp(need / (2 * t * free()), D_MIN + 0.4, dMax * 0.7);
     focus.goal.copy(decal.point);
     if (yaw !== undefined) {
       // кратчайший поворот
@@ -336,7 +467,6 @@ export async function mount(host, { model, onProgress } = {}) {
     const hit = castFrom(at.clone().addScaledVector(dir, -3), dir);
     if (!hit) return;
     decal.point.copy(hit.point);
-    decal.normal.copy(projNormal(hit.normal, dir));
     decal.up.copy(upFromAngle(p.ray, p.angle));
     rebuild();
     if (frame) frameDecal(p.view);
@@ -359,12 +489,11 @@ export async function mount(host, { model, onProgress } = {}) {
     fadeTo(1, 420);
   }
   function setSize(cm) { decal.cm = cm; queueRebuild(); }
-  function setView(name) {
-    const yaw = VIEWS[name];
-    if (yaw === undefined) return;
-    let d = yaw - goal.yaw;
-    d = Math.atan2(Math.sin(d), Math.cos(d));
-    goal.yaw += d; goal.pitch = 0.06; goal.dist = dMax; focus.goal.copy(CENTER);
+  function setTurn(deg) { decal.turn = deg; queueRebuild(); }
+  // px снизу, закрытые панелью: картинка уезжает вверх в свободную часть
+  function setInset(px) {
+    inset.goal = Math.max(0, px);
+    fitMax();
     invalidate();
   }
 
@@ -429,7 +558,6 @@ export async function mount(host, { model, onProgress } = {}) {
       if (hit) {
         // держим «верх» рисунка, подстраивая его под новый наклон кожи
         decal.point.copy(hit.point);
-        decal.normal.copy(projNormal(hit.normal, hit.dir));
         queueRebuild();
       }
     }
@@ -446,7 +574,6 @@ export async function mount(host, { model, onProgress } = {}) {
       const hit = castScreen(e.clientX - r.left, e.clientY - r.top);
       if (hit) {
         decal.point.copy(hit.point);
-        decal.normal.copy(projNormal(hit.normal, hit.dir));
         decal.up.copy(upFromAngle(cur.yaw, 0));
         rebuild();
         focus.goal.copy(hit.point);
@@ -470,7 +597,7 @@ export async function mount(host, { model, onProgress } = {}) {
   // Отрисовка только пока что-то движется и холст виден
   let raf = 0, last = 0, visible = true, started = false;
   const settled = () =>
-    Math.abs(goal.yaw - cur.yaw) < 1e-4 && Math.abs(goal.pitch - cur.pitch) < 1e-4 && Math.abs(goal.dist - cur.dist) < 1e-4 &&
+    Math.abs(goal.yaw - cur.yaw) < 1e-4 && Math.abs(inset.goal - inset.cur) < 0.5 && Math.abs(goal.pitch - cur.pitch) < 1e-4 && Math.abs(goal.dist - cur.dist) < 1e-4 &&
     focus.cur.distanceToSquared(focus.goal) < 1e-8 && lantern.position.x === lightGoal.x && lantern.position.y === lightGoal.y && !fade;
   function frame(now) {
     raf = 0;
@@ -481,6 +608,10 @@ export async function mount(host, { model, onProgress } = {}) {
     cur.pitch += (goal.pitch - cur.pitch) * k;
     cur.dist += (goal.dist - cur.dist) * damp(6, dt);
     focus.cur.lerp(focus.goal, damp(5, dt));
+    inset.cur += (inset.goal - inset.cur) * damp(8, dt);
+    if (Math.abs(inset.goal - inset.cur) < 0.5) inset.cur = inset.goal;
+    if (inset.cur) camera.setViewOffset(width, height, 0, inset.cur / 2, width, height);
+    else if (camera.view?.enabled) camera.clearViewOffset();
     const lk = damp(4, dt);
     lantern.position.x += (lightGoal.x - lantern.position.x) * lk;
     lantern.position.y += (lightGoal.y - lantern.position.y) * lk;
@@ -508,7 +639,7 @@ export async function mount(host, { model, onProgress } = {}) {
   placeCamera();
 
   const api = {
-    setSketch, setSize, setPlace, setView,
+    setSketch, setSize, setTurn, setPlace, setInset,
     get place() { return place; },
     onMove: null,
     resize,
